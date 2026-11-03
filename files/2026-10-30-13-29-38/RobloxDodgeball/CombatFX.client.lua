@@ -650,7 +650,7 @@ end
 local function ballImpact(pos, theme, kind, coin, ballName)
 	-- 金屬撞擊與超音速彈反爆響音效
 	local hitSnd = Instance.new("Sound")
-	hitSnd.SoundId = "rbxassetid://9114223170"
+	hitSnd.SoundId = "rbxassetid://12222225"
 	hitSnd.Volume = 1.45
 	hitSnd.PlaybackSpeed = 1.05 + rng:NextNumber() * 0.15
 	hitSnd.Parent = workspace.CurrentCamera
@@ -658,7 +658,7 @@ local function ballImpact(pos, theme, kind, coin, ballName)
 	game:GetService("Debris"):AddItem(hitSnd, 1.5)
 
 	local clinkSnd = Instance.new("Sound")
-	clinkSnd.SoundId = "rbxassetid://9114223847"
+	clinkSnd.SoundId = "rbxassetid://12222208"
 	clinkSnd.Volume = 1.2
 	clinkSnd.PlaybackSpeed = 1.15
 	clinkSnd.Parent = workspace.CurrentCamera
@@ -754,7 +754,7 @@ Net.OnClientEvent:Connect(function(msg)
 		popupDamageNumber(hitPos, dmgText, isCrit and Color3.fromRGB(255, 215, 50) or Color3.fromRGB(255, 85, 55), isCrit)
 
 		local hitSnd = Instance.new("Sound")
-		hitSnd.SoundId = isCrit and "rbxassetid://9114223170" or "rbxassetid://5665637213"
+		hitSnd.SoundId = isCrit and "rbxassetid://12222225" or "rbxassetid://5665637213"
 		hitSnd.Volume = isCrit and 1.6 or 1.3
 		hitSnd.PlaybackSpeed = 0.98 + rng:NextNumber() * 0.15
 		hitSnd.Parent = workspace.CurrentCamera
@@ -784,5 +784,97 @@ Net.OnClientEvent:Connect(function(msg)
 		local d = msg.data or {}
 		local p = d.pos and Vector3.new(d.pos.X, d.pos.Y, d.pos.Z) or (plr.Character and plr.Character:GetPivot().Position)
 		popupDamageNumber(p, "+" .. tostring(d.amt or 10) .. " 💰", Color3.fromRGB(255, 220, 60), true)
+	elseif msg.act == "perfectparry" then
+		local d = msg.data or {}
+		local pos = d.pos and Vector3.new(d.pos.X, d.pos.Y, d.pos.Z) or (plr.Character and plr.Character:GetPivot().Position)
+		addShake(2.2, 0.28)
+		punchIn(1.6)
+		screenFlash(Color3.fromRGB(255, 225, 75), 0.42, 0.16)
+		hitStop(0.06)
+
+		-- 金色極限衝擊波擴散光環
+		local ring = newPart(Vector3.new(2, 0.2, 2), Color3.fromRGB(255, 220, 50), 0.1)
+		ring.CFrame = CFrame.new(pos) * CFrame.Angles(0, rng:NextNumber() * math.pi, 0)
+		ring.Shape = Enum.PartType.Cylinder
+		local tw = TweenService:Create(ring, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = Vector3.new(0.2, 28, 28),
+			Transparency = 1,
+		})
+		tw:Play()
+		tw.Completed:Connect(function() ring:Destroy() end)
+
+		-- 清脆金屬彈反音效（Roblox 原廠高品質刀劍金屬敲擊聲）
+		local s = Instance.new("Sound")
+		s.SoundId = "rbxassetid://12222208"
+		s.Volume = 2.0
+		s.PlaybackSpeed = 1.62 -- 高頻清亮叮的一聲
+		s.Parent = workspace.CurrentCamera
+		s:Play()
+		game:GetService("Debris"):AddItem(s, 1.5)
+
+		popupDamageNumber(pos + Vector3.new(0, 2, 0), "⚡ 完美彈反! +5 💰", Color3.fromRGB(255, 230, 60), true)
+		hitText("⚡ PERFECT PARRY! 完美彈反! +5 💰 ⚡", Color3.fromRGB(255, 225, 50))
+	elseif msg.act == "swordclash" then
+		local d = msg.data or {}
+		local pos = d.pos and Vector3.new(d.pos.X, d.pos.Y, d.pos.Z) or (plr.Character and plr.Character:GetPivot().Position)
+		addShake(1.5, 0.20)
+		screenFlash(Color3.fromRGB(255, 245, 200), 0.25, 0.10)
+		hitStop(0.05)
+
+		-- 拼刀金屬火花迸射
+		local sparkCount = 12
+		for _ = 1, sparkCount do
+			local sp = newPart(Vector3.new(0.35, 0.35, 1.4), Color3.fromRGB(255, 200, 70), 0)
+			local v = rng:NextUnitVector()
+			sp.CFrame = CFrame.lookAt(pos, pos + v)
+			local twS = TweenService:Create(sp, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				CFrame = sp.CFrame + v * rng:NextNumber(4, 9),
+				Transparency = 1,
+				Size = Vector3.new(0.05, 0.05, 0.2),
+			})
+			twS:Play()
+			twS.Completed:Connect(function() sp:Destroy() end)
+		end
+
+		-- 重金屬拼刀回響
+		local s = Instance.new("Sound")
+		s.SoundId = "rbxassetid://12222208"
+		s.Volume = 1.8
+		s.PlaybackSpeed = 1.05 + rng:NextNumber() * 0.12
+		s.Parent = workspace.CurrentCamera
+		s:Play()
+		game:GetService("Debris"):AddItem(s, 1.5)
+
+		popupDamageNumber(pos + Vector3.new(0, 1.8, 0), "⚔️ 拼刀格擋!", Color3.fromRGB(255, 210, 80), true)
+		hitText("⚔️ SWORD CLASH! 貼身拼刀僵直!", Color3.fromRGB(255, 200, 70))
+	elseif msg.act == "ultimate_burst" then
+		local d = msg.data or {}
+		local pos = d.pos and Vector3.new(d.pos.X, d.pos.Y, d.pos.Z) or (plr.Character and plr.Character:GetPivot().Position)
+		addShake(2.8, 0.45)
+		punchIn(2.0)
+		screenFlash(Color3.fromRGB(255, 200, 50), 0.55, 0.25)
+		hitStop(0.08)
+
+		-- 巨大金色全屏劍氣光環擴散
+		local ring = newPart(Vector3.new(4, 0.3, 4), Color3.fromRGB(255, 180, 30), 0.1)
+		ring.CFrame = CFrame.new(pos)
+		ring.Shape = Enum.PartType.Cylinder
+		local tw = TweenService:Create(ring, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = Vector3.new(0.3, 68, 68),
+			Transparency = 1,
+		})
+		tw:Play()
+		tw.Completed:Connect(function() ring:Destroy() end)
+
+		-- 轟鳴必殺音效
+		local b = Instance.new("Sound")
+		b.SoundId = "rbxassetid://281444251"
+		b.Volume = 2.2
+		b.Parent = workspace.CurrentCamera
+		b:Play()
+		game:GetService("Debris"):AddItem(b, 2.0)
+
+		popupDamageNumber(pos + Vector3.new(0, 3, 0), "🔥 必殺爆發!", Color3.fromRGB(255, 120, 30), true)
+		hitText("🔥 ULTIMATE BURST! 必殺絕技全屏震盪! 🔥", Color3.fromRGB(255, 140, 40))
 	end
 end)

@@ -799,6 +799,259 @@ gClose.ZIndex = 21
 styleRound(gClose :: any, 8)
 gClose.Parent = gachaFrame
 
+
+-- ============================================================
+-- 必殺絕技怒氣槽 HUD（螢幕正下方 · 0~100% 動態充能）
+-- ============================================================
+local ultimateFrame = Instance.new("Frame")
+ultimateFrame.Name = "UltimateHUD"
+ultimateFrame.Size = UDim2.new(0, 320, 0, 28)
+ultimateFrame.Position = UDim2.new(0.5, -160, 1, -48)
+ultimateFrame.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
+ultimateFrame.BackgroundTransparency = 0.35
+styleRound(ultimateFrame, 14)
+local uStroke = Instance.new("UIStroke")
+uStroke.Color = Color3.fromRGB(150, 170, 210)
+uStroke.Transparency = 0.4
+uStroke.Thickness = 1.5
+uStroke.Parent = ultimateFrame
+
+local ultimateBar = Instance.new("Frame")
+ultimateBar.Name = "Fill"
+ultimateBar.Size = UDim2.new(0, 0, 1, 0)
+ultimateBar.BackgroundColor3 = Color3.fromRGB(255, 140, 30)
+ultimateBar.BorderSizePixel = 0
+styleRound(ultimateBar, 14)
+local uGrad = Instance.new("UIGradient")
+uGrad.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 75, 45)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 215, 60)),
+})
+uGrad.Parent = ultimateBar
+ultimateBar.Parent = ultimateFrame
+
+local ultimateText = Instance.new("TextLabel")
+ultimateText.Size = UDim2.new(1, 0, 1, 0)
+ultimateText.BackgroundTransparency = 1
+ultimateText.Font = Enum.Font.GothamBlack
+ultimateText.TextSize = 13
+ultimateText.TextColor3 = Color3.fromRGB(255, 255, 255)
+ultimateText.TextStrokeColor3 = Color3.fromRGB(15, 15, 20)
+ultimateText.TextStrokeTransparency = 0.3
+ultimateText.Text = "🔥 必殺能量: 0%"
+ultimateText.ZIndex = 5
+ultimateText.Parent = ultimateFrame
+
+local ultimateReady = false
+local function triggerUltimate()
+	if not ultimateReady then return end
+	Net:FireServer({act = "ultimate"})
+	ultimateReady = false
+	ultimateText.Text = "🔥 必殺絕技已釋放!"
+end
+
+local ultBtn = Instance.new("TextButton")
+ultBtn.Size = UDim2.new(1, 0, 1, 0)
+ultBtn.BackgroundTransparency = 1
+ultBtn.Text = ""
+ultBtn.ZIndex = 6
+ultBtn.Activated:Connect(triggerUltimate)
+ultBtn.Parent = ultimateFrame
+ultimateFrame.Parent = gui
+
+-- 鍵盤快捷鍵 G 釋放必殺
+UserInputService.InputBegan:Connect(function(inp, gp)
+	if gp then return end
+	if inp.KeyCode == Enum.KeyCode.G then
+		triggerUltimate()
+	end
+end)
+
+-- ============================================================
+-- 7 日登入簽到福利視窗（高質感磨砂毛玻璃彈窗）
+-- ============================================================
+local dailyFrame = Instance.new("Frame")
+dailyFrame.Name = "DailyRewardsModal"
+dailyFrame.Size = UDim2.new(0, 560, 0, 380)
+dailyFrame.Position = UDim2.new(0.5, -280, 0.5, -190)
+dailyFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
+dailyFrame.BackgroundTransparency = 0.12
+dailyFrame.Visible = false
+styleRound(dailyFrame, 16)
+local dfStroke = Instance.new("UIStroke")
+dfStroke.Color = Color3.fromRGB(255, 215, 100)
+dfStroke.Transparency = 0.3
+dfStroke.Thickness = 2
+dfStroke.Parent = dailyFrame
+
+local dfTitle = Instance.new("TextLabel")
+dfTitle.Size = UDim2.new(1, -60, 0, 36)
+dfTitle.Position = UDim2.new(0, 24, 0, 14)
+dfTitle.BackgroundTransparency = 1
+dfTitle.Font = Enum.Font.GothamBlack
+dfTitle.TextSize = 20
+dfTitle.TextColor3 = Color3.fromRGB(255, 225, 90)
+dfTitle.TextXAlignment = Enum.TextXAlignment.Left
+dfTitle.Text = "📅 7 日登入豪禮 · 登頂福利"
+dfTitle.Parent = dailyFrame
+
+local dfSub = Instance.new("TextLabel")
+dfSub.Size = UDim2.new(1, -60, 0, 20)
+dfSub.Position = UDim2.new(0, 24, 0, 48)
+dfSub.BackgroundTransparency = 1
+dfSub.Font = Enum.Font.GothamMedium
+dfSub.TextSize = 13
+dfSub.TextColor3 = Color3.fromRGB(200, 215, 235)
+dfSub.TextXAlignment = Enum.TextXAlignment.Left
+dfSub.Text = "每日登入領取大量金幣，第 7 天必得神話專屬神刀【鳳凰】！"
+dfSub.Parent = dailyFrame
+
+local dfClose = Instance.new("TextButton")
+dfClose.Size = UDim2.new(0, 32, 0, 32)
+dfClose.Position = UDim2.new(1, -44, 0, 14)
+dfClose.BackgroundColor3 = Color3.fromRGB(45, 50, 65)
+dfClose.TextColor3 = Color3.fromRGB(255, 255, 255)
+dfClose.Font = Enum.Font.GothamBold
+dfClose.TextSize = 16
+dfClose.Text = "✕"
+styleRound(dfClose, 8)
+dfClose.Activated:Connect(function() dailyFrame.Visible = false end)
+dfClose.Parent = dailyFrame
+
+local cardsContainer = Instance.new("Frame")
+cardsContainer.Size = UDim2.new(1, -40, 0, 210)
+cardsContainer.Position = UDim2.new(0, 20, 0, 80)
+cardsContainer.BackgroundTransparency = 1
+cardsContainer.Parent = dailyFrame
+
+local claimBtn = Instance.new("TextButton")
+claimBtn.Size = UDim2.new(0, 240, 0, 42)
+claimBtn.Position = UDim2.new(0.5, -120, 1, -54)
+claimBtn.BackgroundColor3 = Color3.fromRGB(255, 175, 45)
+claimBtn.TextColor3 = Color3.fromRGB(25, 20, 10)
+claimBtn.Font = Enum.Font.GothamBlack
+claimBtn.TextSize = 16
+claimBtn.Text = "🎁 一鍵領取今日獎勵"
+styleRound(claimBtn, 12)
+claimBtn.Parent = dailyFrame
+
+local DAILY_CONFIG = {
+	{day = 1, award = "50 ¥", desc = "新手起步金"},
+	{day = 2, award = "100 ¥", desc = "次日登入禮"},
+	{day = 3, award = "200 ¥", desc = "熱血刺客包"},
+	{day = 4, award = "350 ¥", desc = "高手進階金"},
+	{day = 5, award = "500 ¥", desc = "宗師專屬禮"},
+	{day = 6, award = "750 ¥", desc = "傳奇積累金"},
+	{day = 7, award = "1500 ¥ ＋ 鳳凰神刀", desc = "登頂神話大獎！"},
+}
+
+local currentStreak = 1
+local canClaimToday = false
+
+local function refreshDailyUI()
+	for _, c in ipairs(cardsContainer:GetChildren()) do
+		if c:IsA("Frame") then c:Destroy() end
+	end
+
+	-- 上排 4 天，下排 3 天（第 7 天加寬尊爵呈現）
+	for i = 1, 7 do
+		local info = DAILY_CONFIG[i]
+		local card = Instance.new("Frame")
+		card.Name = "Day_" .. i
+		styleRound(card, 10)
+		local cStroke = Instance.new("UIStroke")
+		cStroke.Thickness = 1.5
+		cStroke.Parent = card
+
+		local isPast = i < currentStreak
+		local isCurrent = (i == currentStreak)
+		local isFuture = i > currentStreak
+
+		if isCurrent then
+			card.BackgroundColor3 = Color3.fromRGB(48, 42, 68)
+			cStroke.Color = Color3.fromRGB(255, 215, 60)
+			cStroke.Thickness = 2.4
+		elseif isPast then
+			card.BackgroundColor3 = Color3.fromRGB(24, 28, 35)
+			cStroke.Color = Color3.fromRGB(100, 220, 140)
+		else
+			card.BackgroundColor3 = Color3.fromRGB(22, 24, 30)
+			cStroke.Color = Color3.fromRGB(70, 75, 90)
+		end
+
+		if i <= 4 then
+			card.Size = UDim2.new(0.23, 0, 0.46, 0)
+			card.Position = UDim2.new((i - 1) * 0.255, 0, 0, 0)
+		else
+			if i < 7 then
+				card.Size = UDim2.new(0.23, 0, 0.46, 0)
+				card.Position = UDim2.new((i - 5) * 0.255, 0, 0.52, 0)
+			else
+				-- 第 7 天神話卡片加寬雙倍寬度
+				card.Size = UDim2.new(0.485, 0, 0.46, 0)
+				card.Position = UDim2.new(0.51, 0, 0.52, 0)
+				card.BackgroundColor3 = isCurrent and Color3.fromRGB(75, 45, 25) or card.BackgroundColor3
+			end
+		end
+
+		local dLbl = Instance.new("TextLabel")
+		dLbl.Size = UDim2.new(1, 0, 0.32, 0)
+		dLbl.BackgroundTransparency = 1
+		dLbl.Font = Enum.Font.GothamBold
+		dLbl.TextSize = 13
+		dLbl.TextColor3 = isCurrent and Color3.fromRGB(255, 225, 90) or Color3.fromRGB(200, 205, 220)
+		dLbl.Text = "第 " .. i .. " 天" .. (isPast and " ✓" or "")
+		dLbl.Parent = card
+
+		local aLbl = Instance.new("TextLabel")
+		aLbl.Size = UDim2.new(1, -8, 0.38, 0)
+		aLbl.Position = UDim2.new(0, 4, 0.32, 0)
+		aLbl.BackgroundTransparency = 1
+		aLbl.Font = Enum.Font.GothamBlack
+		aLbl.TextSize = (i == 7) and 13 or 14
+		aLbl.TextColor3 = (i == 7) and Color3.fromRGB(255, 120, 40) or Color3.fromRGB(255, 215, 80)
+		aLbl.Text = info.award
+		aLbl.TextScaled = (i == 7)
+		aLbl.Parent = card
+
+		local sLbl = Instance.new("TextLabel")
+		sLbl.Size = UDim2.new(1, -4, 0.26, 0)
+		sLbl.Position = UDim2.new(0, 2, 0.72, 0)
+		sLbl.BackgroundTransparency = 1
+		sLbl.Font = Enum.Font.SourceSans
+		sLbl.TextSize = 11
+		sLbl.TextColor3 = isPast and Color3.fromRGB(120, 255, 160) or Color3.fromRGB(160, 165, 180)
+		sLbl.Text = isPast and "已領取" or (isCurrent and (canClaimToday and "點擊領取" or "今日已領") or "未解鎖")
+		sLbl.Parent = card
+
+		card.Parent = cardsContainer
+	end
+
+	if canClaimToday then
+		claimBtn.Text = "🎁 一鍵領取第 " .. currentStreak .. " 天獎勵"
+		claimBtn.BackgroundColor3 = Color3.fromRGB(255, 185, 45)
+		claimBtn.AutoButtonColor = true
+	else
+		claimBtn.Text = "✓ 今日已領取（明日繼續領）"
+		claimBtn.BackgroundColor3 = Color3.fromRGB(75, 80, 95)
+		claimBtn.AutoButtonColor = false
+	end
+end
+
+claimBtn.Activated:Connect(function()
+	if canClaimToday then
+		Net:FireServer({act = "claimdaily"})
+	end
+end)
+
+dailyBtn.Activated:Connect(function()
+	dailyFrame.Visible = not dailyFrame.Visible
+	refreshDailyUI()
+end)
+
+dailyFrame.Parent = gui
+
+
 local gachaSpinning = false
 gBtn.Activated:Connect(function()
 	if gachaSpinning then return end
@@ -838,7 +1091,7 @@ arenaBgm.Parent = SoundService
 local BATTLE_TRACKS = {
 	"rbxassetid://1843404009", -- 高能電子動作戰歌
 	"rbxassetid://9043887091", -- 賽博霓虹激戰
-	"rbxassetid://1837877685", -- 疾速電子決戰
+	"rbxassetid://9046863253", -- 疾速電子決戰
 }
 
 local function startArenaMusic()
@@ -940,6 +1193,43 @@ Net.OnClientEvent:Connect(function(msg: any)
 		task.delay(0.45, function() hurtFlash.Visible = false end)
 	elseif act == "hitsuccess" then
 		showToast("🗡 命中！")
+	elseif act == "daily_status" then
+		local d = data :: any
+		currentStreak = math.clamp(tonumber(d.streak or d.day) or 1, 1, 7)
+		canClaimToday = (d.canClaim == true)
+		refreshDailyUI()
+		if canClaimToday then
+			task.delay(1.0, function()
+				dailyFrame.Visible = true
+				refreshDailyUI()
+			end)
+		end
+	elseif act == "ultimate_charge" then
+		local charge = math.clamp(tonumber(data) or 0, 0, 100)
+		TweenService:Create(ultimateBar, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(charge / 100, 0, 1, 0)
+		}):Play()
+		if charge >= 100 then
+			ultimateReady = true
+			ultimateText.Text = "🔥 必殺絕技已就緒! [按 G / 點我釋放] 🔥"
+			uStroke.Color = Color3.fromRGB(255, 215, 60)
+			uStroke.Thickness = 2.4
+			TweenService:Create(ultimateFrame, TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+				BackgroundColor3 = Color3.fromRGB(60, 25, 20)
+			}):Play()
+		else
+			ultimateReady = false
+			ultimateText.Text = "🔥 必殺能量: " .. math.floor(charge) .. "%"
+			uStroke.Color = Color3.fromRGB(150, 170, 210)
+			uStroke.Thickness = 1.5
+		end
+	elseif act == "perfectparry" then
+		showToast("⚡ PERFECT PARRY! 完美彈反! +5 💰")
+	elseif act == "swordclash" then
+		showToast("⚔️ SWORD CLASH! 貼身拼刀!")
+	elseif act == "ultimate_burst" then
+		local d = data :: any
+		showToast("🔥 " .. tostring(d.user or "強者") .. " 釋放了全屏必殺絕技！")
 	end
 end)
 

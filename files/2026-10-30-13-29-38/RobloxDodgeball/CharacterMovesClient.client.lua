@@ -672,100 +672,184 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
---============================ 手機 / 平板觸控按鈕（極簡半透明磨砂圓形組） ============================
--- 參考附圖設計：右下角圓弧排列、半透明暗黑圓底、純白極簡圖標、彈性按壓反饋
-if UserInputService.TouchEnabled then
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "CharacterMovesTouch"
-	gui.ResetOnSpawn = false
-	gui.IgnoreGuiInset = true
-	gui.DisplayOrder = 15
-	gui.Parent = player:WaitForChild("PlayerGui")
+--============================ 手機 / 平板觸控按鈕（極簡半透明磨砂圓形組 · 1:1 附圖設計） ============================
+-- 佈局與視覺風格完全對標附圖：右下角圓弧人體工學群組、深色磨砂半透明圓底、高透純白圖標、彈性微縮放觸控反饋
+-- 同時避開 Roblox 原生右下角跳躍按鈕（原廠跳躍在最右下角，本控制群往上、往內微調，絕不遮擋與衝突）
+-- 電腦端支援一鍵「📱 測試手機按鈕」開關，方便 Studio 與 PC 測試
 
-	local panel = Instance.new("Frame")
-	panel.Name = "TouchPanel"
-	panel.AnchorPoint = Vector2.new(1, 1)
-	panel.Size = UDim2.new(0, 260, 0, 260)
-	panel.Position = UDim2.new(1, -12, 1, -18)
-	panel.BackgroundTransparency = 1
-	panel.Parent = gui
+local touchGui = Instance.new("ScreenGui")
+touchGui.Name = "CharacterMovesTouch"
+touchGui.ResetOnSpawn = false
+touchGui.IgnoreGuiInset = true
+touchGui.DisplayOrder = 18
+touchGui.Parent = player:WaitForChild("PlayerGui")
 
-	local function makeRoundBtn(name, iconText, sz, posRel, onTap)
-		local btn = Instance.new("ImageButton")
-		btn.Name = name
-		btn.AnchorPoint = Vector2.new(0.5, 0.5)
-		btn.Size = sz
-		btn.Position = posRel
-		btn.BackgroundColor3 = Color3.fromRGB(25, 28, 36)
-		btn.BackgroundTransparency = 0.42
-		btn.AutoButtonColor = false
-		btn.ZIndex = 20
+-- 觸控主容器：錨點 (1, 1)，佈局於右下方操作區（留出原生跳躍鍵空隙）
+local panel = Instance.new("Frame")
+panel.Name = "TouchPanel"
+panel.AnchorPoint = Vector2.new(1, 1)
+panel.Size = UDim2.new(0, 270, 0, 270)
+panel.Position = UDim2.new(1, -95, 1, -85) -- 往左上偏移，給原生跳躍按鈕留出專屬安全區
+panel.BackgroundTransparency = 1
+panel.Parent = touchGui
 
-		local c = Instance.new("UICorner")
-		c.CornerRadius = UDim.new(1, 0)
-		c.Parent = btn
+-- 手機觸控預設顯示；PC 端由測試開關控制
+local mobileVisible = UserInputService.TouchEnabled
+panel.Visible = mobileVisible
 
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = Color3.fromRGB(220, 225, 235)
-		stroke.Transparency = 0.35
-		stroke.Thickness = 2.4
-		stroke.Parent = btn
+-- 圓形磨砂按鈕構造器（完全復刻附圖質感）
+local function makeRoundBtn(name, iconText, sz, posRel, onTap, isHold)
+	local btn = Instance.new("ImageButton")
+	btn.Name = name
+	btn.AnchorPoint = Vector2.new(0.5, 0.5)
+	btn.Size = sz
+	btn.Position = posRel
+	btn.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
+	btn.BackgroundTransparency = 0.40
+	btn.AutoButtonColor = false
+	btn.Active = true
+	btn.ZIndex = 25
 
-		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(0.85, 0, 0.85, 0)
-		lbl.Position = UDim2.new(0.075, 0, 0.075, 0)
-		lbl.BackgroundTransparency = 1
-		lbl.Font = Enum.Font.GothamBold
-		lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-		lbl.TextScaled = true
-		lbl.Text = iconText
-		lbl.ZIndex = 21
-		lbl.Parent = btn
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(1, 0)
+	c.Parent = btn
 
-		-- 觸控彈性動態回饋
-		btn.InputBegan:Connect(function(inp)
-			if inp.UserInputType == Enum.UserInputType.Touch then
-				TweenService:Create(btn, TweenInfo.new(0.08), {Size = UDim2.new(sz.X.Scale, sz.X.Offset * 0.9, sz.Y.Scale, sz.Y.Offset * 0.9), BackgroundTransparency = 0.2}):Play()
-			end
-		end)
-		btn.InputEnded:Connect(function(inp)
-			if inp.UserInputType == Enum.UserInputType.Touch then
-				TweenService:Create(btn, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = sz, BackgroundTransparency = 0.42}):Play()
-			end
-		end)
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(225, 232, 245)
+	stroke.Transparency = 0.32
+	stroke.Thickness = 2.4
+	stroke.Parent = btn
 
-		btn.Activated:Connect(onTap)
-		btn.Parent = panel
-		return btn
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(0.82, 0, 0.82, 0)
+	lbl.Position = UDim2.new(0.09, 0, 0.09, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Font = Enum.Font.GothamBold
+	lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+	lbl.TextScaled = true
+	lbl.Text = iconText
+	lbl.ZIndex = 26
+	lbl.Parent = btn
+
+	local isPressed = false
+	local function pressDown()
+		if isPressed then return end
+		isPressed = true
+		TweenService:Create(btn, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(sz.X.Scale, sz.X.Offset * 0.90, sz.Y.Scale, sz.Y.Offset * 0.90),
+			BackgroundTransparency = 0.18,
+		}):Play()
+		TweenService:Create(stroke, TweenInfo.new(0.06), {Transparency = 0.1, Thickness = 2.8}):Play()
+		if onTap then onTap(true) end
 	end
 
-	-- 1. 奔跑（🏃 人形圖標，右上角）
-	makeRoundBtn("BtnSprint", "🏃", UDim2.new(0, 56, 0, 56), UDim2.new(0.78, 0, 0.14, 0), function()
-		isSprinting = not isSprinting
-		applyWalkSpeed()
+	local function releaseUp()
+		if not isPressed then return end
+		isPressed = false
+		TweenService:Create(btn, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Size = sz,
+			BackgroundTransparency = 0.40,
+		}):Play()
+		TweenService:Create(stroke, TweenInfo.new(0.12), {Transparency = 0.32, Thickness = 2.4}):Play()
+		if isHold and onTap then onTap(false) end
+	end
+
+	-- 零延遲觸控響應：在手指落下的瞬間立即觸發，免去 Activated 檢測延遲
+	btn.InputBegan:Connect(function(inp)
+		if inp.UserInputType == Enum.UserInputType.Touch or inp.UserInputType == Enum.UserInputType.MouseButton1 then
+			pressDown()
+		end
 	end)
 
-	-- 2. 揮刀核心攻擊（⚔️ 居中稍大按鍵）
-	makeRoundBtn("BtnAttack", "⚔️", UDim2.new(0, 68, 0, 68), UDim2.new(0.52, 0, 0.42, 0), doAttack)
-
-	-- 3. 前衝（▲ 上箭頭，右側）
-	makeRoundBtn("BtnDash", "▲", UDim2.new(0, 54, 0, 54), UDim2.new(0.86, 0, 0.58, 0), startDash)
-
-	-- 4. 滑剷（⤹ 折箭頭，底部）
-	makeRoundBtn("BtnSlide", "⤹", UDim2.new(0, 54, 0, 54), UDim2.new(0.42, 0, 0.82, 0), startSlide)
-
-	-- 5. 左閃身（◀ 左箭頭，左側）
-	makeRoundBtn("BtnDodgeL", "◀", UDim2.new(0, 52, 0, 52), UDim2.new(0.12, 0, 0.52, 0), function()
-		startDodge(-1)
+	btn.InputEnded:Connect(function(inp)
+		if inp.UserInputType == Enum.UserInputType.Touch or inp.UserInputType == Enum.UserInputType.MouseButton1 then
+			releaseUp()
+		end
 	end)
 
-	-- 6. 右閃身（▶ 右箭頭）
-	makeRoundBtn("BtnDodgeR", "▶", UDim2.new(0, 52, 0, 52), UDim2.new(0.40, 0, 0.16, 0), function()
-		startDodge(1)
-	end)
-
-	log("手機端簡約磨砂圓形按鈕已成功掛載")
+	btn.Parent = panel
+	return btn
 end
+
+-- 1. 奔跑（🏃 人形奔跑圖標，右上角圓圈，點擊切換/長按奔馳）
+local sprintBtn = makeRoundBtn("BtnSprint", "🏃", UDim2.new(0, 62, 0, 62), UDim2.new(0.78, 0, 0.18, 0), function()
+	isSprinting = not isSprinting
+	applyWalkSpeed()
+	if sprintBtn then
+		local stroke = sprintBtn:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			stroke.Color = isSprinting and Color3.fromRGB(120, 255, 180) or Color3.fromRGB(225, 232, 245)
+		end
+	end
+end)
+
+-- 2. 核心揮刀攻擊（⚔️ 居中顯目核心大按鍵）
+makeRoundBtn("BtnAttack", "⚔️", UDim2.new(0, 68, 0, 68), UDim2.new(0.50, 0, 0.46, 0), function()
+	doAttack()
+end)
+
+-- 3. 前衝 / 突進（▲ 單箭頭上，右側）
+makeRoundBtn("BtnDash", "▲", UDim2.new(0, 56, 0, 56), UDim2.new(0.82, 0, 0.60, 0), function()
+	startDash()
+end)
+
+-- 4. 貼地滑剷（⮝ 雙三角上衝 / 滑剷，正下方）
+makeRoundBtn("BtnSlide", "⮝", UDim2.new(0, 56, 0, 56), UDim2.new(0.48, 0, 0.84, 0), function()
+	startSlide()
+end)
+
+-- 5. 左側閃避橫移（◀ 左箭頭，左側）
+makeRoundBtn("BtnDodgeL", "◀", UDim2.new(0, 54, 0, 54), UDim2.new(0.14, 0, 0.52, 0), function()
+	startDodge(-1)
+end)
+
+-- 6. 右側閃避橫移（▶ 右箭頭，偏上方）
+makeRoundBtn("BtnDodgeR", "▶", UDim2.new(0, 54, 0, 54), UDim2.new(0.40, 0, 0.16, 0), function()
+	startDodge(1)
+end)
+
+-- 7. 視角鎖定按鍵（🔒 自由視角鎖定，左下角）
+local lockBtn = makeRoundBtn("BtnLock", "🔒", UDim2.new(0, 46, 0, 46), UDim2.new(0.12, 0, 0.84, 0), function()
+	toggleShiftLock()
+	if lockBtn then
+		local lbl = lockBtn:FindFirstChildOfClass("TextLabel")
+		if lbl then lbl.Text = isShiftLocked and "🔓" or "🔒" end
+		local stroke = lockBtn:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			stroke.Color = isShiftLocked and Color3.fromRGB(255, 215, 60) or Color3.fromRGB(225, 232, 245)
+		end
+	end
+end)
+
+-- 電腦端 Studio / PC 專用測試開關膠囊按鍵（右上角）
+local testToggleBtn = Instance.new("TextButton")
+testToggleBtn.Name = "MobileUITestToggle"
+testToggleBtn.Size = UDim2.new(0, 138, 0, 32)
+testToggleBtn.Position = UDim2.new(1, -150, 0, 14)
+testToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 34, 46)
+testToggleBtn.BackgroundTransparency = 0.35
+testToggleBtn.TextColor3 = Color3.fromRGB(220, 235, 255)
+testToggleBtn.Font = Enum.Font.GothamMedium
+testToggleBtn.TextSize = 13
+testToggleBtn.Text = panel.Visible and "📱 隱藏手機鍵" or "📱 測試手機鍵"
+testToggleBtn.ZIndex = 30
+local tCorner = Instance.new("UICorner")
+tCorner.CornerRadius = UDim.new(0, 16)
+tCorner.Parent = testToggleBtn
+local tStroke = Instance.new("UIStroke")
+tStroke.Color = Color3.fromRGB(120, 180, 255)
+tStroke.Transparency = 0.4
+tStroke.Thickness = 1.2
+tStroke.Parent = testToggleBtn
+testToggleBtn.Parent = touchGui
+
+testToggleBtn.MouseButton1Click:Connect(function()
+	panel.Visible = not panel.Visible
+	testToggleBtn.Text = panel.Visible and "📱 隱藏手機鍵" or "📱 測試手機鍵"
+	tStroke.Color = panel.Visible and Color3.fromRGB(120, 255, 180) or Color3.fromRGB(120, 180, 255)
+end)
+
+log("手機端 1:1 極簡磨砂圓形按鈕已成功掛載（兼具 PC 預覽測試開關）")
 
 --============================ 電腦版按鍵提示（12 秒後淡出） ============================
 if UserInputService.KeyboardEnabled then

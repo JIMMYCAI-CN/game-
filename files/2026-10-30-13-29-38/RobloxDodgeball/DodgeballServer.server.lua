@@ -107,11 +107,11 @@ end
 -- ------------------------------------------------------------
 -- 玩家資料（含簡單雲存檔）
 -- ------------------------------------------------------------
-type PD = {coins: number, kills: number, owned: {[string]: boolean}, equipped: string, items: {string}}
+type PD = {coins: number, kills: number, owned: {[string]: boolean}, equipped: string, items: {string}, loginStreak: number, lastClaimDay: number}
 local pData: {[Player]: PD} = {}
 
 local function defaultData(): PD
-	return {coins = 250, kills = 0, owned = {steel = true}, equipped = "steel", items = {}}
+	return {coins = 250, kills = 0, owned = {steel = true}, equipped = "steel", items = {}, loginStreak = 1, lastClaimDay = 0}
 end
 
 local function load(plr: Player)
@@ -134,6 +134,8 @@ local function load(plr: Player)
 		if KNIFE_BY_ID[saved.equipped] and d.owned[saved.equipped] then
 			d.equipped = saved.equipped
 		end
+		d.loginStreak = tonumber(saved.loginStreak) or 1
+		d.lastClaimDay = tonumber(saved.lastClaimDay) or 0
 	end
 	pData[plr] = d
 end
@@ -142,7 +144,10 @@ local function save(plr: Player)
 	local d = pData[plr]
 	if not d or not STORE then return end
 	pcall(function()
-		STORE:SetAsync("u_" .. plr.UserId, {coins = d.coins, kills = d.kills, owned = d.owned, equipped = d.equipped})
+		STORE:SetAsync("u_" .. plr.UserId, {
+			coins = d.coins, kills = d.kills, owned = d.owned, equipped = d.equipped,
+			loginStreak = d.loginStreak, lastClaimDay = d.lastClaimDay,
+		})
 	end)
 end
 
@@ -166,6 +171,17 @@ Players.PlayerAdded:Connect(function(plr)
 	local k = Instance.new("IntValue"); k.Name = "擊殺"; k.Value = pd(plr).kills; k.Parent = ls
 	ls.Parent = plr
 	send(plr, "coins", pd(plr).coins)
+	local today = math.floor(os.time() / 86400)
+	local d = pd(plr)
+	if today > (d.lastClaimDay or 0) + 1 then
+		d.loginStreak = 1
+	end
+	send(plr, "daily_status", {
+		streak = d.loginStreak or 1,
+		canClaim = (today > (d.lastClaimDay or 0)),
+		day = math.clamp(d.loginStreak or 1, 1, 7),
+	})
+	send(plr, "ultimate_charge", 0)
 end)
 
 Players.PlayerRemoving:Connect(function(plr)
@@ -1092,7 +1108,325 @@ local function buildLobby()
 	-- ------------------------------------------------------------
 	-- 1. 大廳隨機刷新金幣（3 枚隨機分佈，拾取 +10 金幣並於 10 秒後重刷）
 	-- ------------------------------------------------------------
-	local function setupLobbyCoins(islandModel: Model)
+	
+	-- ============================================================
+	-- 憤怒鳥棲息地與放置掛機產金農場（Angry Birds Roost Tycoon）
+	-- 玩家可抱起大廳憤怒鳥放入專屬鳥巢，小鳥歡快上下浮動，每幾秒自動為主人產出金幣！
+	-- ============================================================
+	local carriedBirds: {[Player]: Instance} = {}
+	local nestOccupants: {[Part]: {bird: Instance, owner: Player, rate: number, interval: number, total: number, name: string}} = {}
+
+	local BIRD_RATES: {[string]: {rate: number, interval: number, name: string}} = {
+		["Red"] = {rate = 5, interval = 5, name = "胖紅 (Red)"},
+		["The Blues"] = {rate = 6, interval = 4, name = "藍弟弟 (The Blues)"},
+		["Chuck the Angry Bird"] = {rate = 8, interval = 4, name = "飛鏢黃 (Chuck)"},
+		["Matilda"] = {rate = 10, interval = 4, name = "白姑娘 (Matilda)"},
+		["Bomb"] = {rate = 12, interval = 4, name = "炸彈黑 (Bomb)"},
+		["Terence"] = {rate = 20, interval = 3, name = "大紅 (Terence)"},
+		["King Pig"] = {rate = 30, interval = 3, name = "綠豬王 (King Pig)"},
+		["Minion Pig"] = {rate = 4, interval = 5, name = "普通豬豬"},
+		["pig bored"] = {rate = 4, interval = 5, name = "無聊豬豬"},
+	}
+
+	local function setupAngryBirdsRoost(islandModel: Model)
+		local roostFolder = Instance.new("Folder")
+		roostFolder.Name = "AngryBirdsRoost"
+		roostFolder.Parent = islandModel
+
+		local floorY = LOBBY_CENTER.Y + LY_DECK
+		local ROOST_CENTER = Vector3.new(LOBBY_CENTER.X + 46, floorY, LOBBY_CENTER.Z + 32)
+
+		-- 棲息地標牌
+		local signPost = Instance.new("Part")
+		signPost.Name = "RoostSignPost"
+		signPost.Size = Vector3.new(0.8, 7.5, 0.8)
+		signPost.Color = Color3.fromRGB(110, 75, 45)
+		signPost.Material = Enum.Material.Wood
+		signPost.Anchored = true
+		signPost.CFrame = CFrame.new(ROOST_CENTER + Vector3.new(0, 3.75, -11))
+		signPost.Parent = roostFolder
+
+		local signBoard = Instance.new("Part")
+		signBoard.Name = "RoostSignBoard"
+		signBoard.Size = Vector3.new(14, 2.8, 0.6)
+		signBoard.Color = Color3.fromRGB(135, 90, 50)
+		signBoard.Material = Enum.Material.WoodPlanks
+		signBoard.Anchored = true
+		signBoard.CFrame = signPost.CFrame * CFrame.new(0, 2.2, 0)
+		signBoard.Parent = roostFolder
+
+		local signBB = Instance.new("BillboardGui")
+		signBB.Name = "SignTitle"
+		signBB.Size = UDim2.new(0, 340, 0, 72)
+		signBB.StudsOffset = Vector3.new(0, 1.8, 0)
+		signBB.AlwaysOnTop = true
+		signBB.MaxDistance = 90
+		signBB.Adornee = signBoard
+
+		local titleLbl = Instance.new("TextLabel")
+		titleLbl.Size = UDim2.new(1, 0, 0.58, 0)
+		titleLbl.BackgroundTransparency = 1
+		titleLbl.Font = Enum.Font.GothamBlack
+		titleLbl.Text = "🐦 憤怒鳥棲息農場 · 放置自刷金幣 💰"
+		titleLbl.TextColor3 = Color3.fromRGB(255, 225, 75)
+		titleLbl.TextStrokeColor3 = Color3.fromRGB(30, 20, 10)
+		titleLbl.TextStrokeTransparency = 0.2
+		titleLbl.TextScaled = true
+		titleLbl.Parent = signBB
+
+		local subLbl = Instance.new("TextLabel")
+		subLbl.Size = UDim2.new(1, 0, 0.42, 0)
+		subLbl.Position = UDim2.new(0, 0, 0.58, 0)
+		subLbl.BackgroundTransparency = 1
+		subLbl.Font = Enum.Font.GothamMedium
+		subLbl.Text = "走近抱起大廳小鳥放入鳥巢，離線掛機持續自動刷錢！"
+		subLbl.TextColor3 = Color3.fromRGB(220, 255, 230)
+		subLbl.TextStrokeColor3 = Color3.fromRGB(30, 20, 10)
+		subLbl.TextStrokeTransparency = 0.3
+		subLbl.TextScaled = true
+		subLbl.Parent = signBB
+		signBB.Parent = signBoard
+
+		-- 4 座溫馨木造鳥窩（Nest 1 ~ 4）
+		local NEST_OFFSETS = {
+			Vector3.new(-7.5, 0, -4),
+			Vector3.new(7.5, 0, -4),
+			Vector3.new(-7.5, 0, 6.5),
+			Vector3.new(7.5, 0, 6.5),
+		}
+
+		for idx, off in ipairs(NEST_OFFSETS) do
+			local nPos = ROOST_CENTER + off
+
+			-- 窩底托盤
+			local nestBase = Instance.new("Part")
+			nestBase.Name = "NestBase_" .. idx
+			nestBase.Shape = Enum.PartType.Cylinder
+			nestBase.Size = Vector3.new(0.6, 5.2, 5.2)
+			nestBase.Color = Color3.fromRGB(130, 85, 50)
+			nestBase.Material = Enum.Material.WoodPlanks
+			nestBase.Anchored = true
+			nestBase.CFrame = CFrame.new(nPos + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, 0, math.rad(90))
+			nestBase.Parent = roostFolder
+
+			-- 窩草軟墊
+			local nestCushion = Instance.new("Part")
+			nestCushion.Name = "NestCushion_" .. idx
+			nestCushion.Shape = Enum.PartType.Cylinder
+			nestCushion.Size = Vector3.new(0.4, 4.4, 4.4)
+			nestCushion.Color = Color3.fromRGB(220, 185, 95)
+			nestCushion.Material = Enum.Material.Grass
+			nestCushion.Anchored = true
+			nestCushion.CFrame = CFrame.new(nPos + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+			nestCushion.Parent = roostFolder
+
+			-- 柔和光暈
+			local light = Instance.new("PointLight")
+			light.Color = Color3.fromRGB(255, 215, 120)
+			light.Range = 10
+			light.Brightness = 0.8
+			light.Parent = nestCushion
+
+			-- 3D 浮動資訊面板
+			local bb = Instance.new("BillboardGui")
+			bb.Name = "NestDisplay"
+			bb.Size = UDim2.new(0, 190, 0, 56)
+			bb.StudsOffset = Vector3.new(0, 3.2, 0)
+			bb.AlwaysOnTop = true
+			bb.MaxDistance = 50
+			bb.Adornee = nestCushion
+
+			local title = Instance.new("TextLabel")
+			title.Name = "Title"
+			title.Size = UDim2.new(1, 0, 0.52, 0)
+			title.BackgroundTransparency = 1
+			title.Font = Enum.Font.GothamBlack
+			title.Text = "🪺 空閒鳥巢 #" .. idx
+			title.TextColor3 = Color3.fromRGB(225, 235, 245)
+			title.TextStrokeColor3 = Color3.fromRGB(20, 20, 20)
+			title.TextStrokeTransparency = 0.3
+			title.TextScaled = true
+			title.Parent = bb
+
+			local desc = Instance.new("TextLabel")
+			desc.Name = "Desc"
+			desc.Size = UDim2.new(1, 0, 0.48, 0)
+			desc.Position = UDim2.new(0, 0, 0.52, 0)
+			desc.BackgroundTransparency = 1
+			desc.Font = Enum.Font.GothamMedium
+			desc.Text = "💡 抱小鳥放入，開啟自動掛機刷錢！"
+			desc.TextColor3 = Color3.fromRGB(255, 215, 100)
+			desc.TextStrokeColor3 = Color3.fromRGB(20, 20, 20)
+			desc.TextStrokeTransparency = 0.4
+			desc.TextScaled = true
+			desc.Parent = bb
+			bb.Parent = nestCushion
+
+			-- 互動提示
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.Name = "NestPrompt"
+			prompt.ActionText = "派遣小鳥入駐掛機 💤"
+			prompt.ObjectText = "鳥巢 #" .. idx
+			prompt.HoldDuration = 0
+			prompt.MaxActivationDistance = 12
+			prompt.RequiresLineOfSight = false
+			prompt.Parent = nestCushion
+
+			prompt.Triggered:Connect(function(plr)
+				local occ = nestOccupants[nestCushion]
+				if occ then
+					-- 已有小鳥：若是主人或訪客，可抱回小鳥
+					local bird = occ.bird
+					nestOccupants[nestCushion] = nil
+					carriedBirds[plr] = bird
+
+					local ch = plr.Character
+					local hrp = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+					if hrp and bird then
+						if bird:IsA("Model") then
+							bird:PivotTo(hrp.CFrame * CFrame.new(0, 2.5, 0))
+						elseif bird:IsA("BasePart") then
+							bird.CFrame = hrp.CFrame * CFrame.new(0, 2.5, 0)
+						end
+					end
+
+					title.Text = "🪺 空閒鳥巢 #" .. idx
+					title.TextColor3 = Color3.fromRGB(225, 235, 245)
+					desc.Text = "💡 抱小鳥放入，開啟自動掛機刷錢！"
+					desc.TextColor3 = Color3.fromRGB(255, 215, 100)
+					prompt.ActionText = "派遣小鳥入駐掛機 💤"
+					prompt.ObjectText = "鳥巢 #" .. idx
+					send(plr, "toast", "已抱回小鳥【" .. occ.name .. "】！")
+				else
+					-- 空巢：檢查玩家是否抱著小鳥
+					local bird = carriedBirds[plr]
+					if not bird then
+						send(plr, "toast", "你手上還沒有小鳥！先走去大廳抱起一隻小鳥吧~")
+						return
+					end
+
+					carriedBirds[plr] = nil
+					local birdName = bird.Name
+					local info = BIRD_RATES[birdName] or {rate = 5, interval = 5, name = birdName}
+
+					local roostPos = nPos + Vector3.new(0, 1.2, 0)
+					if bird:IsA("Model") then
+						bird:PivotTo(CFrame.new(roostPos) * CFrame.Angles(0, math.rad(-90), 0))
+					elseif bird:IsA("BasePart") then
+						bird.CFrame = CFrame.new(roostPos) * CFrame.Angles(0, math.rad(-90), 0)
+					end
+
+					nestOccupants[nestCushion] = {
+						bird = bird,
+						owner = plr,
+						rate = info.rate,
+						interval = info.interval,
+						total = 0,
+						name = info.name,
+					}
+
+					title.Text = "🐦 " .. info.name .. " 棲息中"
+					title.TextColor3 = Color3.fromRGB(120, 255, 180)
+					desc.Text = "💤 +" .. info.rate .. " 金幣 / " .. info.interval .. "秒 (主人: " .. plr.DisplayName .. ")"
+					desc.TextColor3 = Color3.fromRGB(255, 225, 80)
+					prompt.ActionText = "抱回小鳥 🐦"
+					prompt.ObjectText = info.name
+
+					send(plr, "toast", "🎉 成功派遣【" .. info.name .. "】入駐！正在自動刷錢...")
+				end
+			end)
+		end
+
+		-- 小鳥全域掛機產金循環
+		task.spawn(function()
+			local tickCounter = 0
+			while true do
+				task.wait(1)
+				tickCounter += 1
+
+				for nestPart, occ in pairs(nestOccupants) do
+					local owner = occ.owner
+					local bird = occ.bird
+					if owner and owner.Parent and bird and bird.Parent then
+						-- 歡樂浮動呼吸動畫
+						local basePos = nestPart.Position + Vector3.new(0, 0.7, 0)
+						local bob = math.sin(tickCounter * 2.5) * 0.25
+						local curCF = CFrame.new(basePos + Vector3.new(0, bob, 0)) * CFrame.Angles(0, math.rad(-90) + math.sin(tickCounter * 1.5) * 0.15, 0)
+						if bird:IsA("Model") then
+							bird:PivotTo(curCF)
+						elseif bird:IsA("BasePart") then
+							bird.CFrame = curCF
+						end
+
+						-- 週期產出金幣
+						if tickCounter % occ.interval == 0 then
+							local od = pd(owner)
+							od.coins += occ.rate
+							occ.total += occ.rate
+							syncLeader(owner)
+							send(owner, "coins", od.coins)
+							send(owner, "coinpopup", {pos = nestPart.Position + Vector3.new(0, 2.5, 0), amt = occ.rate})
+
+							-- 更新告示板累計產出
+							local bb = nestPart:FindFirstChild("NestDisplay") :: BillboardGui?
+							if bb then
+								local desc = bb:FindFirstChild("Desc") :: TextLabel?
+								if desc then
+									desc.Text = "💤 +" .. occ.rate .. " 幣/" .. occ.interval .. "s (累計產出: " .. occ.total .. " ¥)"
+								end
+							end
+						end
+					else
+						-- 主人離開伺服器，保留小鳥在巢穴供其他人認領
+						if not (owner and owner.Parent) then
+							occ.owner = nil :: any
+							local bb = nestPart:FindFirstChild("NestDisplay") :: BillboardGui?
+							if bb then
+								local desc = bb:FindFirstChild("Desc") :: TextLabel?
+								if desc then desc.Text = "💤 小鳥在此休息 (點擊即可認領)" end
+							end
+						end
+					end
+				end
+			end
+		end)
+
+		-- 為大廳全部現存小鳥加上「抱起小鳥」互動提示
+		local function hookBirdPrompt(bird: Instance)
+			if not (bird:IsA("Model") or bird:IsA("BasePart")) then return end
+			local pPart = bird:IsA("Model") and (bird.PrimaryPart or bird:FindFirstChildOfClass("BasePart")) or bird :: BasePart
+			if not pPart or pPart:FindFirstChild("BirdPrompt") then return end
+
+			local bp = Instance.new("ProximityPrompt")
+			bp.Name = "BirdPrompt"
+			bp.ActionText = "抱起小鳥 🐦"
+			bp.ObjectText = bird.Name
+			bp.HoldDuration = 0
+			bp.MaxActivationDistance = 14
+			bp.RequiresLineOfSight = false
+			bp.Parent = pPart
+
+			bp.Triggered:Connect(function(plr)
+				if carriedBirds[plr] then
+					send(plr, "toast", "你手上已經抱著一隻小鳥了！先將它放到鳥巢吧~")
+					return
+				end
+				carriedBirds[plr] = bird
+				send(plr, "toast", "你抱起了【" .. bird.Name .. "】！快帶去鳥巢掛機產幣吧 🪺")
+			end)
+		end
+
+		task.delay(1.5, function()
+			for _, ch in ipairs(islandModel:GetDescendants()) do
+				if BIRD_RATES[ch.Name] then
+					hookBirdPrompt(ch)
+				end
+			end
+		end)
+	end
+
+
+local function setupLobbyCoins(islandModel: Model)
 		local coinFolder = Instance.new("Folder")
 		coinFolder.Name = "LobbyCoins"
 		coinFolder.Parent = islandModel
@@ -1578,6 +1912,7 @@ local function buildLobby()
 
 	-- 呼叫大廳新活動元件
 	setupLobbyCoins(island)
+	setupAngryBirdsRoost(island)
 	buildAssassinsCafe(island)
 	buildTrainingDummy(island)
 
@@ -2283,7 +2618,7 @@ spawnBot = function(idx: number, spawnPos: Vector3)
 			trk:Play(0.05)
 		end
 		local slashSnd = Instance.new("Sound")
-		slashSnd.SoundId = "rbxassetid://9114223170"
+		slashSnd.SoundId = "rbxassetid://12222225"
 		slashSnd.Volume = 1.15
 		slashSnd.PlaybackSpeed = 0.98 + math.random() * 0.15
 		slashSnd.Parent = hrp
@@ -2694,6 +3029,33 @@ knifeHit = function(attacker: Player)
 			end)
 			local isCrit = math.random() < 0.35
 			local practiceDmg = math.random(25, 45) + (equipSkin.dmg or 25)
+			dummyHits += 1
+			lastDummyHit = os.clock()
+			chargeUltimate(attacker, 15)
+
+			local curHits = dummyHits
+			local rank = (curHits >= 50 and "SSS") or (curHits >= 30 and "SS") or (curHits >= 20 and "S") or (curHits >= 15 and "A") or (curHits >= 10 and "B") or (curHits >= 5 and "C") or "D"
+			local bb = dummy:FindFirstChild("TargetDisplay", true) :: BillboardGui?
+			if bb then
+				local lbl = bb:FindFirstChildOfClass("TextLabel")
+				if lbl then
+					lbl.Text = "🔥 COMBO: " .. curHits .. " HITS! [" .. rank .. "級]"
+					lbl.TextColor3 = (rank == "SSS" and Color3.fromRGB(255, 60, 60)) or (rank == "SS" and Color3.fromRGB(255, 140, 40)) or (rank == "S" and Color3.fromRGB(255, 215, 50)) or Color3.fromRGB(120, 255, 180)
+				end
+			end
+			task.delay(2.6, function()
+				if os.clock() - lastDummyHit >= 2.5 and dummyHits == curHits then
+					dummyHits = 0
+					if bb then
+						local lbl = bb:FindFirstChildOfClass("TextLabel")
+						if lbl then
+							lbl.Text = "🎯 練刀木人樁"
+							lbl.TextColor3 = Color3.fromRGB(255, 215, 60)
+						end
+					end
+				end
+			end)
+
 			send(attacker, "hitsuccess", {
 				dmg = practiceDmg,
 				victim = "練刀木人樁",
@@ -2702,6 +3064,38 @@ knifeHit = function(attacker: Player)
 				skin = equipSkin.id
 			})
 			ballBurst(dPart.Position + Vector3.new(0, 1.2, 0), equipSkin.color, 2.0)
+		end
+	end
+
+	-- 記錄揮刀時間，並判定貼身拼刀（Sword Clash）
+	lastSlashTime[attacker] = os.clock()
+	for otherPlr in pairs(alive) do
+		if otherPlr ~= attacker and alive[otherPlr] then
+			local oChar = otherPlr.Character
+			local oHrp = oChar and oChar:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if oHrp and (oHrp.Position - hrp.Position).Magnitude <= 7.5 then
+				if os.clock() - (lastSlashTime[otherPlr] or 0) < 0.22 then
+					local mid = (hrp.Position + oHrp.Position) * 0.5
+					send(attacker, "swordclash", {pos = mid})
+					send(otherPlr, "swordclash", {pos = mid})
+					hrp.AssemblyLinearVelocity = -look * 28
+					oHrp.AssemblyLinearVelocity = look * 28
+					ballBurst(mid, Color3.fromRGB(255, 230, 90), 2.8)
+					return
+				end
+			end
+		end
+	end
+	for _, b in ipairs(activeBots) do
+		if b and b.PrimaryPart and (b.PrimaryPart.Position - hrp.Position).Magnitude <= 7.5 then
+			if os.clock() - (lastSlashTime[b] or 0) < 0.22 then
+				local mid = (hrp.Position + b.PrimaryPart.Position) * 0.5
+				send(attacker, "swordclash", {pos = mid})
+				hrp.AssemblyLinearVelocity = -look * 28
+				b.PrimaryPart.AssemblyLinearVelocity = look * 28
+				ballBurst(mid, Color3.fromRGB(255, 230, 90), 2.8)
+				return
+			end
 		end
 	end
 
@@ -3373,9 +3767,34 @@ local function createBall(t, pos: Vector3, vel: Vector3, opts: {track: boolean?,
 end
 
 -- 砍碎後反彈：越貴的刀把球染成刀的顏色，速度也更快
+
+-- ============================================================
+-- 登頂 Roblox 第一名戰鬥核心系統：必殺能量槽、拼刀僵直、木人連擊
+-- ============================================================
+local ultimateCharge: {[Player]: number} = {}
+local lastSlashTime: {[any]: number} = {}
+local dummyHits = 0
+local lastDummyHit = 0
+
+local function chargeUltimate(plr: Player, amt: number)
+	local cur = math.clamp((ultimateCharge[plr] or 0) + amt, 0, 100)
+	ultimateCharge[plr] = cur
+	send(plr, "ultimate_charge", cur)
+end
+
 reflectBall = function(attacker: Player?, ball: BasePart, look: Vector3, t)
 	local skin = (attacker and KNIFE_BY_ID[pd(attacker).equipped]) or KNIVES[1]
 	local mult = (skin.reflectMul or 1.3) * (t.reflectMul or 1.0)
+	local isPerfect = false
+	if attacker and attacker.Character and attacker.Character:FindFirstChild("HumanoidRootPart") then
+		local hrp = attacker.Character.HumanoidRootPart :: BasePart
+		local dist = (ball.Position - hrp.Position).Magnitude
+		local relVel = ball.AssemblyLinearVelocity:Dot(look)
+		if dist <= 14 and relVel < -0.15 then
+			isPerfect = true
+			mult *= 1.85 -- 完美彈反：超音速 1.85x 反彈加速度
+		end
+	end
 	local speed = math.max(ball.AssemblyLinearVelocity.Magnitude, 55) * mult
 
 	local dir = (look + Vector3.new(0, 0.05, 0)).Unit
@@ -3435,13 +3854,26 @@ reflectBall = function(attacker: Player?, ball: BasePart, look: Vector3, t)
 
 	if attacker then
 		local d = pd(attacker)
-		d.coins += 1
+		local bonusCoin = isPerfect and 5 or 1
+		d.coins += bonusCoin
+		syncLeader(attacker)
 		send(attacker, "coins", d.coins)
+		chargeUltimate(attacker, isPerfect and 35 or 20)
+
+		if isPerfect then
+			send(attacker, "perfectparry", {pos = ball.Position})
+			for _, other in ipairs(Players:GetPlayers()) do
+				if other ~= attacker then
+					send(other, "effect", {kind = "perfectparry", pos = ball.Position})
+				end
+			end
+		end
+
 		send(attacker, "ballhit", {
-			kind = "reflect",
+			kind = isPerfect and "perfect" or "reflect",
 			pos = ball.Position,
-			color = skin.color,
-			coin = 1,
+			color = isPerfect and Color3.fromRGB(255, 220, 50) or skin.color,
+			coin = bonusCoin,
 			name = t.name,
 			skin = skin.id,
 		})
@@ -4142,6 +4574,80 @@ Net.OnServerEvent:Connect(function(plr: Player, msg: any)
 		useItem(plr, tonumber(msg.slot) or 1)
 	elseif act == "openshop" then
 		send(plr, "shopdata", {coins = d.coins, owned = d.owned, equipped = d.equipped, knives = KNIVES})
+	elseif act == "ultimate" then
+		if (ultimateCharge[plr] or 0) >= 100 then
+			ultimateCharge[plr] = 0
+			send(plr, "ultimate_charge", 0)
+
+			local ch = plr.Character
+			local hrp = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if hrp then
+				-- 2.5 秒金色無敵
+				hrp:SetAttribute("InvincibleUntil", os.clock() + 2.5)
+
+				-- 全場廣播必殺大絕特效與震盪
+				broadcast("ultimate_burst", {pos = hrp.Position, user = plr.DisplayName})
+
+				-- 震飛引爆半徑 35 格內全部躲避球
+				for _, b in ipairs(balls) do
+					if b and b.Parent and (b.Position - hrp.Position).Magnitude <= 35 then
+						local outDir = (b.Position - hrp.Position).Unit
+						if outDir.Magnitude < 0.1 then outDir = hrp.CFrame.LookVector end
+						b.AssemblyLinearVelocity = (outDir + Vector3.new(0, 0.15, 0)).Unit * 220
+						ballBurst(b.Position, Color3.fromRGB(255, 200, 40), 3.2)
+					end
+				end
+
+				-- 震飛波及周圍對手與機器人（35 傷害＋18格強擊退）
+				for target in pairs(alive) do
+					if target ~= plr and alive[target] then
+						local tChar = target.Character
+						local tHrp = tChar and tChar:FindFirstChild("HumanoidRootPart") :: BasePart?
+						local tHum = tChar and tChar:FindFirstChildOfClass("Humanoid")
+						if tHrp and tHum and (tHrp.Position - hrp.Position).Magnitude <= 30 then
+							local kDir = (tHrp.Position - hrp.Position).Unit
+							tHrp.AssemblyLinearVelocity = kDir * 55 + Vector3.new(0, 22, 0)
+							tHum:TakeDamage(35)
+							send(target, "hurt", {dmg = 35, attacker = plr.DisplayName .. " [必殺]"})
+						end
+					end
+				end
+				for _, bot in ipairs(activeBots) do
+					if bot and bot.PrimaryPart and (bot.PrimaryPart.Position - hrp.Position).Magnitude <= 30 then
+						local bHum = bot:FindFirstChildOfClass("Humanoid")
+						if bHum then
+							local kDir = (bot.PrimaryPart.Position - hrp.Position).Unit
+							bot.PrimaryPart.AssemblyLinearVelocity = kDir * 55 + Vector3.new(0, 22, 0)
+							bHum:TakeDamage(35)
+						end
+					end
+				end
+			end
+		end
+	elseif act == "claimdaily" then
+		local today = math.floor(os.time() / 86400)
+		if today > (d.lastClaimDay or 0) then
+			local REWARDS = {50, 100, 200, 350, 500, 750, 1500}
+			local day = math.clamp(d.loginStreak or 1, 1, 7)
+			local award = REWARDS[day] or 100
+			d.coins += award
+			d.lastClaimDay = today
+			if day == 7 then
+				d.owned["phoenix"] = true
+				send(plr, "toast", "🔥 登頂大獎！獲得第7日專屬神話刀【鳳凰】＋1500金幣！")
+			else
+				send(plr, "toast", "🎉 簽到成功！領取第 " .. day .. " 天福利：+" .. award .. " 金幣！")
+			end
+			d.loginStreak = (d.loginStreak % 7) + 1
+			save(plr)
+			syncLeader(plr)
+			send(plr, "coins", d.coins)
+			send(plr, "daily_status", {
+				streak = d.loginStreak,
+				canClaim = false,
+				day = math.clamp(d.loginStreak, 1, 7),
+			})
+		end
 	end
 end)
 
