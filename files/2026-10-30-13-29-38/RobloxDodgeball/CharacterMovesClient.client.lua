@@ -665,9 +665,11 @@ local function setupCharacter(newCharacter)
 		dashingUsesFov = false
 	end
 
-	humanoid = character:WaitForChild("Humanoid")
-	rootPart = character:WaitForChild("HumanoidRootPart")
-	animator = humanoid:WaitForChild("Animator")
+	humanoid = character:WaitForChild("Humanoid", 10)
+	rootPart = character:WaitForChild("HumanoidRootPart", 10)
+	if not humanoid or not rootPart then return end
+	animator = humanoid:WaitForChild("Animator", 10)
+	if not animator then return end
 
 	animFolder = Instance.new("Folder")
 	animFolder.Name = "CharacterMoveAnims"
@@ -886,5 +888,4 @@ if UserInputService.KeyboardEnabled then
 		gui:Destroy()
 	end)
 end
-
 

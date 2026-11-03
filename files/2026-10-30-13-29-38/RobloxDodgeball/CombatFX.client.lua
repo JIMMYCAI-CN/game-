@@ -548,7 +548,7 @@ end)
 local function ballImpact(pos, theme, kind, coin, ballName)
 	-- 金屬撞擊與清脆彈反打擊音效
 	local hitSnd = Instance.new("Sound")
-	hitSnd.SoundId = "rbxasset://sounds/swordhit.wav"
+	hitSnd.SoundId = "rbxassetid://5665637213"
 	hitSnd.Volume = 1.35
 	hitSnd.PlaybackSpeed = 1.02 + rng:NextNumber() * 0.16
 	hitSnd.Parent = workspace.CurrentCamera
@@ -556,7 +556,7 @@ local function ballImpact(pos, theme, kind, coin, ballName)
 	game:GetService("Debris"):AddItem(hitSnd, 1.5)
 
 	local clinkSnd = Instance.new("Sound")
-	clinkSnd.SoundId = "rbxassetid://9114223171"
+	clinkSnd.SoundId = "rbxassetid://9069609200"
 	clinkSnd.Volume = 0.9
 	clinkSnd.PlaybackSpeed = 1.15
 	clinkSnd.Parent = workspace.CurrentCamera
@@ -619,7 +619,7 @@ Net.OnClientEvent:Connect(function(msg)
 		addShake(0.65, 0.18)
 		punchIn(0.85)
 		local hitSnd = Instance.new("Sound")
-		hitSnd.SoundId = "rbxasset://sounds/swordhit.wav"
+		hitSnd.SoundId = "rbxassetid://5665637213"
 		hitSnd.Volume = 1.2
 		hitSnd.PlaybackSpeed = 1.1
 		hitSnd.Parent = workspace.CurrentCamera

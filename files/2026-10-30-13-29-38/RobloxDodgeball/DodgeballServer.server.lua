@@ -96,7 +96,8 @@ local Net = Instance.new("RemoteEvent")
 Net.Name = "DodgeNet"
 Net.Parent = ReplicatedStorage
 
-local function send(plr: Player, act: string, data: any?)
+local function send(plr: Player?, act: string, data: any?)
+	if not plr or not plr:IsA("Player") or not plr.Parent then return end
 	Net:FireClient(plr, {act = act, data = data})
 end
 local function broadcast(act: string, data: any?)
@@ -655,10 +656,10 @@ local function buildLobby()
 		end
 	end)
 
-	-- 11. 優雅擺放使用者的憤怒鳥與休息區模型（從 ServerStorage.LobbyDeco 讀取，精心安放不重疊）
+	-- 11. 優雅擺放使用者的憤怒鳥與休息區模型（從 ServerStorage.LobbyDeco 讀取，底部精確貼地不卡地，新增多款鳥豬）
 	local deco = game:GetService("ServerStorage"):FindFirstChild("LobbyDeco")
 	if deco then
-		local function spawnDecoModel(name: string, pos: Vector3, yawDeg: number, scale: number?)
+		local function spawnDecoModel(name: string, targetX: number, targetFloorY: number, targetZ: number, yawDeg: number, scale: number?)
 			local tpl = deco:FindFirstChild(name)
 			if not tpl then return end
 			local m = tpl:Clone()
@@ -671,28 +672,52 @@ local function buildLobby()
 					d.CanCollide = true
 				end
 			end
+			if m:IsA("Folder") then
+				local newModel = Instance.new("Model")
+				newModel.Name = m.Name
+				for _, ch in ipairs(m:GetChildren()) do
+					ch.Parent = newModel
+				end
+				m = newModel
+			end
+			local rotCF = CFrame.Angles(0, math.rad(yawDeg), 0)
 			if m:IsA("Model") then
-				m:PivotTo(CFrame.new(pos) * CFrame.Angles(0, math.rad(yawDeg), 0))
+				m:PivotTo(rotCF)
+				local cf, sz = m:GetBoundingBox()
+				local bottomY = cf.Position.Y - sz.Y / 2
+				local deltaY = (targetFloorY + 0.05) - bottomY
+				local finalPos = Vector3.new(targetX, cf.Position.Y + deltaY, targetZ)
+				m:PivotTo(CFrame.new(finalPos) * rotCF.Rotation)
 			elseif m:IsA("BasePart") then
-				m.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(yawDeg), 0)
+				local sz = m.Size
+				m.CFrame = CFrame.new(targetX, targetFloorY + sz.Y / 2 + 0.05, targetZ) * rotCF
 			end
 			m.Parent = island
 			return m
 		end
 
-		-- 東側休閒茶歇區（Loveseat 沙發、茶几與憤怒鳥 Chuck、Minion Pig）
-		spawnDecoModel("Loveseat_Dark stone grey", LOBBY_CENTER + Vector3.new(58, LY_DECK + 1.2, 6), 180)
-		spawnDecoModel("Table", LOBBY_CENTER + Vector3.new(58, LY_DECK + 1.2, 11), 0)
-		spawnDecoModel("Chuck the Angry Bird", LOBBY_CENTER + Vector3.new(52, LY_DECK + 1.2, 10), 120)
-		spawnDecoModel("Minion Pig", LOBBY_CENTER + Vector3.new(63, LY_DECK + 1.2, 11), -130)
+		local floorY = LOBBY_CENTER.Y + LY_DECK
+		local daisY = LOBBY_CENTER.Y + LY_DAIS
 
-		-- 西側萌鳥漫步區（Red, The Blues, pig bored）
-		spawnDecoModel("Red", LOBBY_CENTER + Vector3.new(-58, LY_DECK + 1.2, 6), -60)
-		spawnDecoModel("The Blues", LOBBY_CENTER + Vector3.new(-62, LY_DECK + 1.2, 11), 30)
-		spawnDecoModel("pig bored", LOBBY_CENTER + Vector3.new(-54, LY_DECK + 1.2, 10), -110)
+		-- 東側休閒茶歇區（Loveseat 沙發、茶几與憤怒鳥 Chuck、Matilda、Minion Pig）
+		spawnDecoModel("Loveseat_Dark stone grey", LOBBY_CENTER.X + 58, floorY, LOBBY_CENTER.Z + 6, 180)
+		spawnDecoModel("Table", LOBBY_CENTER.X + 58, floorY, LOBBY_CENTER.Z + 11, 0)
+		spawnDecoModel("Chuck the Angry Bird", LOBBY_CENTER.X + 52, floorY, LOBBY_CENTER.Z + 10, 120)
+		spawnDecoModel("Matilda", LOBBY_CENTER.X + 64, floorY, LOBBY_CENTER.Z + 16, -45)
+		spawnDecoModel("Minion Pig", LOBBY_CENTER.X + 63, floorY, LOBBY_CENTER.Z + 6, -130)
+
+		-- 西側萌鳥漫步區（Red, The Blues, pig bored, Bomb 炸彈鳥）
+		spawnDecoModel("Red", LOBBY_CENTER.X - 58, floorY, LOBBY_CENTER.Z + 6, -60)
+		spawnDecoModel("The Blues", LOBBY_CENTER.X - 62, floorY, LOBBY_CENTER.Z + 14, 30)
+		spawnDecoModel("pig bored", LOBBY_CENTER.X - 54, floorY, LOBBY_CENTER.Z + 10, -110)
+		spawnDecoModel("Bomb", LOBBY_CENTER.X - 54, floorY, LOBBY_CENTER.Z - 16, 75)
+
+		-- 南側創作者榮譽殿堂兩翼守護神獸（King Pig 豬王 與 Terence 特倫斯巨紅鳥）
+		spawnDecoModel("King Pig", LOBBY_CENTER.X - 28, daisY, LOBBY_CENTER.Z + 52, 45, 0.85)
+		spawnDecoModel("Terence", LOBBY_CENTER.X + 28, daisY, LOBBY_CENTER.Z + 52, -45, 0.9)
 
 		-- 東北角觀景排行榜展台
-		spawnDecoModel("Leaderboard", LOBBY_CENTER + Vector3.new(34, LY_DECK + 1.0, -42), 195)
+		spawnDecoModel("Leaderboard", LOBBY_CENTER.X + 34, floorY, LOBBY_CENTER.Z - 42, 195)
 	end
 
 	island.Parent = workspace
@@ -1111,6 +1136,20 @@ local alive: {[Player]: boolean} = {}
 local lastAttacker: {[Player]: Player} = {}
 local roundTag = 0
 
+-- 相互引用函式前置宣告（避免在定義前呼叫導致 attempt to call a nil value 造成遊戲無法開始）
+local clearBots: () -> ()
+local spawnBot: (idx: number, spawnPos: Vector3) -> ()
+local makeKnifeTool: (skinId: string) -> Tool
+local knifeHit: (attacker: Player) -> ()
+local giveKnife: (plr: Player) -> ()
+local ballBurst: (pos: Vector3, color: Color3, scale: number) -> ()
+local reflectBall: (attacker: Player?, ball: BasePart, look: Vector3, t: any) -> ()
+local breakBall: (attacker: Player, ball: BasePart, t: any) -> ()
+local swordSweepBalls: ((attacker: Player, look: Vector3) -> number)?
+local spawnBall: (kindId: string?) -> ()
+local spawnBox: () -> ()
+local BALL_BY_ID: {[string]: any} = {}
+
 -- 清掉上一回合留下的球／盒子／陷阱（全部直接掛在 Workspace 上，用屬性標記）
 local function clearRoundObjects()
 	clearBots()
@@ -1147,81 +1186,71 @@ local activeBots: {Model} = {}
 local BOT_NAMES = {"[AI] 影武者·零式", "[AI] 疾風武者", "[AI] 烈火劍客"}
 local BOT_COLORS = {Color3.fromRGB(60, 180, 255), Color3.fromRGB(255, 90, 90), Color3.fromRGB(255, 200, 50)}
 
-local function clearBots()
+clearBots = function()
 	for _, b in ipairs(activeBots) do
 		if b and b.Parent then b:Destroy() end
 	end
 	table.clear(activeBots)
 end
 
-local function spawnBot(idx: number, spawnPos: Vector3)
-	local bot = Instance.new("Model")
+spawnBot = function(idx: number, spawnPos: Vector3)
+	local botColor = BOT_COLORS[idx] or Color3.fromRGB(60, 180, 255)
+	local desc = Instance.new("HumanoidDescription")
+	desc.HeadColor = Color3.fromRGB(240, 240, 250)
+	desc.TorsoColor = botColor
+	desc.LeftArmColor = botColor
+	desc.RightArmColor = botColor
+	desc.LeftLegColor = Color3.fromRGB(40, 42, 50)
+	desc.RightLegColor = Color3.fromRGB(40, 42, 50)
+
+	local bot = Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
 	bot.Name = BOT_NAMES[idx] or ("[AI] 武者 " .. idx)
 	tagObject(bot)
 
-	local hum = Instance.new("Humanoid")
+	local hum = bot:FindFirstChildOfClass("Humanoid")
+	if not hum then
+		hum = Instance.new("Humanoid")
+		hum.Parent = bot
+	end
 	hum.MaxHealth = 100
 	hum.Health = 100
 	hum.WalkSpeed = math.random(15, 19)
-	hum.Parent = bot
 
-	local hrp = Instance.new("Part")
-	hrp.Name = "HumanoidRootPart"
-	hrp.Size = Vector3.new(2, 2, 1)
-	hrp.Position = spawnPos
-	hrp.CanCollide = false
-	hrp.Transparency = 1
-	hrp.Parent = bot
-	bot.PrimaryPart = hrp
+	local hrp = bot:FindFirstChild("HumanoidRootPart") :: BasePart
+	if not hrp then
+		hrp = bot.PrimaryPart :: BasePart
+	end
+	bot:PivotTo(CFrame.new(spawnPos + Vector3.new(0, 3, 0)))
 
-	local torso = Instance.new("Part")
-	torso.Name = "Torso"
-	torso.Size = Vector3.new(2, 2, 1)
-	torso.Position = spawnPos
-	torso.Color = BOT_COLORS[idx] or Color3.fromRGB(100, 100, 120)
-	torso.Material = Enum.Material.Neon
-	torso.Parent = bot
+	local head = bot:FindFirstChild("Head") or hrp
+	if head then
+		local bb = Instance.new("BillboardGui")
+		bb.Size = UDim2.new(0, 140, 0, 38)
+		bb.StudsOffset = Vector3.new(0, 2.8, 0)
+		bb.AlwaysOnTop = true
+		local nl = Instance.new("TextLabel")
+		nl.Size = UDim2.new(1, 0, 0.5, 0)
+		nl.BackgroundTransparency = 1
+		nl.Text = bot.Name
+		nl.TextColor3 = botColor
+		nl.Font = Enum.Font.SourceSansBold
+		nl.TextScaled = true
+		nl.Parent = bb
+		local hpBg = Instance.new("Frame")
+		hpBg.Size = UDim2.new(1, 0, 0.35, 0)
+		hpBg.Position = UDim2.new(0, 0, 0.55, 0)
+		hpBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+		hpBg.Parent = bb
+		local hpBar = Instance.new("Frame")
+		hpBar.Size = UDim2.new(1, 0, 1, 0)
+		hpBar.BackgroundColor3 = Color3.fromRGB(80, 220, 80)
+		hpBar.Parent = hpBg
+		bb.Parent = head
 
-	local head = Instance.new("Part")
-	head.Name = "Head"
-	head.Shape = Enum.PartType.Ball
-	head.Size = Vector3.new(1.4, 1.4, 1.4)
-	head.Position = spawnPos + Vector3.new(0, 1.7, 0)
-	head.Color = Color3.fromRGB(240, 240, 250)
-	head.Material = Enum.Material.SmoothPlastic
-	head.Parent = bot
-
-	local bb = Instance.new("BillboardGui")
-	bb.Size = UDim2.new(0, 140, 0, 38)
-	bb.StudsOffset = Vector3.new(0, 2.8, 0)
-	bb.AlwaysOnTop = true
-	local nl = Instance.new("TextLabel")
-	nl.Size = UDim2.new(1, 0, 0.5, 0)
-	nl.BackgroundTransparency = 1
-	nl.Text = bot.Name
-	nl.TextColor3 = BOT_COLORS[idx] or Color3.new(1, 1, 1)
-	nl.Font = Enum.Font.SourceSansBold
-	nl.TextScaled = true
-	nl.Parent = bb
-	local hpBg = Instance.new("Frame")
-	hpBg.Size = UDim2.new(1, 0, 0.35, 0)
-	hpBg.Position = UDim2.new(0, 0, 0.55, 0)
-	hpBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-	hpBg.Parent = bb
-	local hpBar = Instance.new("Frame")
-	hpBar.Size = UDim2.new(1, 0, 1, 0)
-	hpBar.BackgroundColor3 = Color3.fromRGB(80, 220, 80)
-	hpBar.Parent = hpBg
-	bb.Parent = head
-
-	hum.HealthChanged:Connect(function(newHp)
-		hpBar.Size = UDim2.new(math.clamp(newHp / hum.MaxHealth, 0, 1), 0, 1, 0)
-	end)
-
-	local w1 = Instance.new("WeldConstraint")
-	w1.Part0 = hrp; w1.Part1 = torso; w1.Parent = hrp
-	local w2 = Instance.new("WeldConstraint")
-	w2.Part0 = torso; w2.Part1 = head; w2.Parent = torso
+		hum.HealthChanged:Connect(function(newHp)
+			hpBar.Size = UDim2.new(math.clamp(newHp / hum.MaxHealth, 0, 1), 0, 1, 0)
+		end)
+	end
 
 	local botSkins = {"steel", "thunder", "sakura", "frost", "astra"}
 	local chosenSkin = botSkins[idx] or "steel"
@@ -1322,7 +1351,7 @@ local function spawnBot(idx: number, spawnPos: Vector3)
 	end)
 end
 
-local function makeKnifeTool(skinId: string): Tool
+makeKnifeTool = function(skinId: string): Tool
 	local skin = KNIFE_BY_ID[skinId] or KNIVES[1]
 	local tier = skin.tier or 1
 	local tool = Instance.new("Tool")
@@ -1414,10 +1443,8 @@ end
 
 local swingCd: {[Player]: number} = {}
 
--- 球的判定寫在下方「球」段落，這裡先宣告再由那裡指派
-local swordSweepBalls: ((Player, Vector3) -> number)?
-
-local function knifeHit(attacker: Player)
+-- 球的判定寫在下方「球」段落，已在頂部宣告
+knifeHit = function(attacker: Player)
 	if not roundActive or not inRound[attacker] or not alive[attacker] then return end
 	local now = os.clock()
 	if (swingCd[attacker] or 0) > now then return end
@@ -1517,7 +1544,7 @@ local function knifeHit(attacker: Player)
 end
 
 -- 給玩家發刀
-local function giveKnife(plr: Player)
+giveKnife = function(plr: Player)
 	local char = plr.Character
 	if not char then return end
 	local backpack = plr:FindFirstChild("Backpack")
@@ -1628,7 +1655,7 @@ local BALL_TYPES = {
 	},
 }
 
-local BALL_BY_ID = {}
+-- BALL_BY_ID 已在頂部宣告
 for _, t in ipairs(BALL_TYPES) do BALL_BY_ID[t.id] = t end
 
 local roundStartClock = os.clock()
@@ -1655,7 +1682,7 @@ local function pickBallKind(progress: number)
 end
 
 -- 爆開：核心球 + 碎片（給所有人看得到）
-local function ballBurst(pos: Vector3, color: Color3, scale: number)
+ballBurst = function(pos: Vector3, color: Color3, scale: number)
 	local core = Instance.new("Part")
 	core.Shape = Enum.PartType.Ball
 	core.Size = Vector3.new(scale * 0.55, scale * 0.55, scale * 0.55)
@@ -2093,7 +2120,7 @@ local function createBall(t, pos: Vector3, vel: Vector3, opts: {track: boolean?,
 end
 
 -- 砍碎後反彈：越貴的刀把球染成刀的顏色，速度也更快
-local function reflectBall(attacker: Player?, ball: BasePart, look: Vector3, t)
+reflectBall = function(attacker: Player?, ball: BasePart, look: Vector3, t)
 	local skin = (attacker and KNIFE_BY_ID[pd(attacker).equipped]) or KNIVES[1]
 	local mult = (skin.reflectMul or 1.3) * (t.reflectMul or 1.0)
 	local speed = math.max(ball.AssemblyLinearVelocity.Magnitude, 55) * mult
@@ -2153,22 +2180,24 @@ local function reflectBall(attacker: Player?, ball: BasePart, look: Vector3, t)
 
 	ballBurst(ball.Position, skin.color, 2.6)
 
-	local d = pd(attacker)
-	d.coins += 1
-	send(attacker, "coins", d.coins)
-	send(attacker, "ballhit", {
-		kind = "reflect",
-		pos = ball.Position,
-		color = skin.color,
-		coin = 1,
-		name = t.name,
-		skin = skin.id,
-	})
+	if attacker then
+		local d = pd(attacker)
+		d.coins += 1
+		send(attacker, "coins", d.coins)
+		send(attacker, "ballhit", {
+			kind = "reflect",
+			pos = ball.Position,
+			color = skin.color,
+			coin = 1,
+			name = t.name,
+			skin = skin.id,
+		})
+	end
 end
 
 local spawnMiniBall: (Vector3, Vector3, string, any) -> ()
 
-local function breakBall(attacker: Player, ball: BasePart, t)
+breakBall = function(attacker: Player, ball: BasePart, t)
 	local pos = ball.Position
 	ballBurst(pos, t.color, t.size)
 
@@ -2184,21 +2213,23 @@ local function breakBall(attacker: Player, ball: BasePart, t)
 	end
 
 	local coinGain = (ball:GetAttribute("Mini") == true) and 0 or (t.coin or 0)
-	if coinGain > 0 then
-		local d = pd(attacker)
-		d.coins += coinGain
-		syncLeader(attacker)
-		send(attacker, "coins", d.coins)
-	end
+	if attacker then
+		if coinGain > 0 then
+			local d = pd(attacker)
+			d.coins += coinGain
+			syncLeader(attacker)
+			send(attacker, "coins", d.coins)
+		end
 
-	send(attacker, "ballhit", {
-		kind = "destroy",
-		pos = pos,
-		color = t.color,
-		coin = coinGain,
-		name = t.name,
-		skin = (KNIFE_BY_ID[pd(attacker).equipped] or KNIVES[1]).id,
-	})
+		send(attacker, "ballhit", {
+			kind = "destroy",
+			pos = pos,
+			color = t.color,
+			coin = coinGain,
+			name = t.name,
+			skin = (KNIFE_BY_ID[pd(attacker).equipped] or KNIVES[1]).id,
+		})
+	end
 	ball:Destroy()
 end
 
@@ -2250,7 +2281,7 @@ swordSweepBalls = function(attacker: Player, look: Vector3): number
 	return n
 end
 
-local function spawnBall(kindId: string?)
+spawnBall = function(kindId: string?)
 	local progress = math.clamp((os.clock() - roundStartClock) / ROUND_TIME_MAX, 0, 1)
 	local t = (kindId and BALL_BY_ID[kindId]) or pickBallKind(progress)
 
@@ -2433,7 +2464,7 @@ end
 -- ------------------------------------------------------------
 -- 盒子（隨機出現，開出效果道具）
 -- ------------------------------------------------------------
-local function spawnBox()
+spawnBox = function()
 	-- 避開紅色方塊：落地點壓在方塊上/裡面就換位置（最多試 12 次，不行就放場中央）
 	local pos: Vector3? = nil
 	for _ = 1, 12 do
@@ -2646,21 +2677,25 @@ local function startRound()
 	local i = 0
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if spectating[plr] then continue end   -- 按了「不參加」→ 留在大廳
+		local char = plr.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if hum and hum.Health > 0 then
+			hum.Health = hum.MaxHealth
+		end
 		i += 1
 		inRound[plr] = true
 		alive[plr] = true
-		plr:LoadCharacter()
 	end
 	if i == 0 then
 		broadcast("winner", "大家都沒參加，這回合跳過 😴")
 		roundActive = false
 		return
 	end
-	task.wait(1)
-	i = 0
+	task.wait(0.4)
+	local pIdx = 0
 	for plr in pairs(inRound) do
-		i += 1
-		teleportToArena(plr, i)
+		pIdx += 1
+		teleportToArena(plr, pIdx)
 		giveKnife(plr)
 	end
 
@@ -2707,7 +2742,7 @@ local function startRound()
 			nextBox = BOX_EVERY[1] + math.random() * (BOX_EVERY[2] - BOX_EVERY[1])
 		end
 
-		-- 數存活
+		-- 數存活（包含玩家與 AI 武者）
 		local n = 0
 		local lastPlr: Player? = nil
 		for plr, a in pairs(alive) do
@@ -2716,11 +2751,19 @@ local function startRound()
 				lastPlr = plr
 			end
 		end
+		local botCount = 0
+		for _, b in ipairs(activeBots) do
+			if b and b.Parent and b:FindFirstChild("Humanoid") and (b.Humanoid :: Humanoid).Health > 0 then
+				botCount += 1
+			end
+		end
+		local totalAlive = n + botCount
+		local initialTotal = startCount + math.max(4 - startCount, 0)
 		local timeUp = elapsed >= ROUND_TIME_MAX
-		if (n == 0) or (n <= 1 and startCount > 1) or timeUp then
+		if (n == 0) or (totalAlive <= 1 and initialTotal > 1) or timeUp then
 			-- 回合結束
 			if n >= 1 then
-				-- 有存活者：時間到（含單人測試撐完）→ 全部存活者拿獎勵
+				-- 有存活玩家（擊敗所有 AI 武者或撐過時間）→ 拿勝利獎勵
 				for winner in pairs(alive) do
 					if alive[winner] and winner.Parent then
 						local d = pd(winner)
@@ -2730,19 +2773,26 @@ local function startRound()
 						broadcast("winner", winner.DisplayName .. " 獲勝！ +" .. COIN_WIN)
 					end
 				end
-				if not timeUp and n == 1 then
-					-- 正常決出最後一人（已在上面發過獎勵）
-				end
 			else
 				broadcast("winner", "無人存活…")
 			end
 			roundActive = false
 		else
-			setStatus("存活: " .. n .. " 人")
+			setStatus("存活: " .. totalAlive .. " 人")
 		end
 	end
 
-	task.wait(4)
+	task.wait(3.5)
+	for _, plr in ipairs(Players:GetPlayers()) do
+		inRound[plr] = false
+		alive[plr] = false
+		local char = plr.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if char and hum and hum.Health > 0 then
+			char:PivotTo(CFrame.new(LOBBY_CENTER + Vector3.new(0, 4, 0)))
+			hum.Health = hum.MaxHealth
+		end
+	end
 	roundTag += 1
 	clearRoundObjects()
 end
