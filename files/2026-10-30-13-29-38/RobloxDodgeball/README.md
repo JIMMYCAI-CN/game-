@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | `DodgeballServer.server.lua` | `ServerScriptService` | Script |
 | `DodgeballClient.client.lua` | `StarterPlayer/StarterPlayerScripts` | LocalScript |
+| `CombatFX.client.lua` | `StarterPlayer/StarterPlayerScripts` | LocalScript |
 | `CharacterMovesServer.server.lua` | `ServerScriptService` | Script |
 | `CharacterMovesClient.client.lua` | `StarterPlayer/StarterPlayerScripts` | LocalScript |
 

@@ -54,6 +54,33 @@ coinLabel.Text = "¥ …"
 styleRound(coinLabel :: any, 10)
 coinLabel.Parent = gui
 
+-- 不參加回合按鈕（左上、金幣下面）：開了之後回合開始不會被傳送進場
+local spectateBtn = Instance.new("TextButton")
+spectateBtn.Size = UDim2.new(0, 150, 0, 30)
+spectateBtn.Position = UDim2.new(0, 10, 0, 46)
+spectateBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+spectateBtn.BackgroundTransparency = 0.35
+spectateBtn.TextColor3 = Color3.fromRGB(200, 200, 210)
+spectateBtn.TextScaled = true
+spectateBtn.Font = Enum.Font.SourceSansBold
+spectateBtn.Text = "😴 不參加：關"
+styleRound(spectateBtn :: any, 10)
+spectateBtn.Parent = gui
+local spectating = false
+spectateBtn.MouseButton1Click:Connect(function()
+	spectating = not spectating
+	if spectating then
+		spectateBtn.Text = "😴 不參加：開"
+		spectateBtn.TextColor3 = Color3.fromRGB(255, 170, 90)
+		spectateBtn.BackgroundColor3 = Color3.fromRGB(70, 40, 20)
+	else
+		spectateBtn.Text = "😴 不參加：關"
+		spectateBtn.TextColor3 = Color3.fromRGB(200, 200, 210)
+		spectateBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+	end
+	Net:FireServer({act = "spectate", on = spectating})
+end)
+
 -- 淘汰播報（右上，往上堆疊）
 local feedFrame = Instance.new("Frame")
 feedFrame.Size = UDim2.new(0, 320, 0, 220)
@@ -127,138 +154,6 @@ hurtFlash.BackgroundTransparency = 1
 hurtFlash.Visible = false
 hurtFlash.ZIndex = 40
 hurtFlash.Parent = gui
-
--- ------------------------------------------------------------
--- 打击感：屏幕震动 / 大字横幅 / 命中飘字 / 球种预警
--- ------------------------------------------------------------
-local RunService = game:GetService("RunService")
-
-local shakeAmt = 0
-local function addShake(a: number)
-	shakeAmt = math.min(shakeAmt + a, 1.4)
-end
-RunService:BindToRenderStep("DodgeShake", Enum.RenderPriority.Camera.Value + 1, function(dt: number)
-	if shakeAmt > 0.004 then
-		local cam = workspace.CurrentCamera
-		if cam then
-			local k = shakeAmt * 0.032
-			cam.CFrame = cam.CFrame * CFrame.Angles(
-				(math.random() - 0.5) * k,
-				(math.random() - 0.5) * k,
-				(math.random() - 0.5) * k * 0.7)
-		end
-		shakeAmt = shakeAmt * math.max(0, 1 - dt * 8)
-	else
-		shakeAmt = 0
-	end
-end)
-
--- 大字横幅
-local bigLabel = Instance.new("TextLabel")
-bigLabel.Size = UDim2.new(0, 680, 0, 96)
-bigLabel.Position = UDim2.new(0.5, -340, 0.26, 0)
-bigLabel.BackgroundTransparency = 1
-bigLabel.TextColor3 = Color3.new(1, 1, 1)
-bigLabel.TextScaled = true
-bigLabel.Font = Enum.Font.FredokaOne
-bigLabel.TextStrokeTransparency = 0.4
-bigLabel.TextTransparency = 1
-bigLabel.ZIndex = 45
-bigLabel.Text = ""
-bigLabel.Parent = gui
-
-local bigToken = 0
-local function bigBanner(txt: string, col: Color3, hold: number?)
-	bigToken += 1
-	local my = bigToken
-	bigLabel.Text = txt
-	bigLabel.TextColor3 = col
-	bigLabel.TextTransparency = 1
-	bigLabel.Position = UDim2.new(0.5, -340, 0.26, 20)
-	TweenService:Create(bigLabel, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		TextTransparency = 0,
-		Position = UDim2.new(0.5, -340, 0.26, 0),
-	}):Play()
-	task.delay(hold or 1.1, function()
-		if bigToken ~= my then return end
-		TweenService:Create(bigLabel, TweenInfo.new(0.35), {
-			TextTransparency = 1,
-			Position = UDim2.new(0.5, -340, 0.26, -26),
-		}):Play()
-	end)
-end
-
--- 命中飘字
-local function floatText(txt: string, col: Color3)
-	local t = Instance.new("TextLabel")
-	t.Size = UDim2.new(0, 260, 0, 40)
-	t.Position = UDim2.new(0.5, -130 + math.random(-45, 45), 0.6, 0)
-	t.BackgroundTransparency = 1
-	t.Text = txt
-	t.TextColor3 = col
-	t.TextScaled = true
-	t.Font = Enum.Font.SourceSansBold
-	t.TextStrokeTransparency = 0.35
-	t.ZIndex = 46
-	t.Parent = gui
-	local startX = t.Position.X.Scale
-	local startOff = t.Position.X.Offset
-	TweenService:Create(t, TweenInfo.new(0.75, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Position = UDim2.new(startX, startOff, 0.6, -72),
-		TextTransparency = 1,
-	}):Play()
-	task.delay(0.8, function()
-		if t and t.Parent then t:Destroy() end
-	end)
-end
-
--- 球种预警（状态条下方）
-local warnLabel = Instance.new("TextLabel")
-warnLabel.Size = UDim2.new(0, 380, 0, 30)
-warnLabel.Position = UDim2.new(0.5, -190, 0, 48)
-warnLabel.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
-warnLabel.BackgroundTransparency = 1
-warnLabel.TextColor3 = Color3.new(1, 1, 1)
-warnLabel.TextScaled = true
-warnLabel.Font = Enum.Font.SourceSansBold
-warnLabel.TextTransparency = 1
-warnLabel.Text = ""
-warnLabel.ZIndex = 30
-styleRound(warnLabel :: any, 8)
-warnLabel.Parent = gui
-
-local warnToken = 0
-local function ballWarn(nm: string, col: Color3)
-	warnToken += 1
-	local my = warnToken
-	warnLabel.Text = "⚠  " .. nm .. " 来袭"
-	warnLabel.TextColor3 = col
-	warnLabel.BackgroundTransparency = 0.3
-	warnLabel.TextTransparency = 0
-	task.delay(1.7, function()
-		if warnToken ~= my then return end
-		TweenService:Create(warnLabel, TweenInfo.new(0.5), {
-			TextTransparency = 1,
-			BackgroundTransparency = 1,
-		}):Play()
-	end)
-end
-
--- 连杀计数
-local streak = 0
-local streakAt = 0
-local STREAK_NAMES = { "DOUBLE KILL", "TRIPLE KILL", "RAMPAGE", "UNSTOPPABLE", "GODLIKE" }
-local function bumpStreak()
-	local now = os.clock()
-	if now - streakAt > 4.5 then streak = 0 end
-	streakAt = now
-	streak += 1
-	if streak >= 2 then
-		local nm = STREAK_NAMES[math.min(streak - 1, #STREAK_NAMES)]
-		bigBanner(nm, Color3.fromRGB(255, 214, 110))
-		addShake(0.35)
-	end
-end
 
 -- ------------------------------------------------------------
 -- 道具欄（最多 2 格，像影片裡右上角的 1/2 格）
@@ -455,21 +350,26 @@ local function buildShopCells()
 		nm.ZIndex = 22
 		nm.Parent = cell
 
-		local dmg = Instance.new("TextLabel")
-		dmg.Size = UDim2.new(1, -8, 0, 20)
-		dmg.Position = UDim2.new(0, 4, 0, 42)
-		dmg.BackgroundTransparency = 1
-		dmg.TextColor3 = Color3.fromRGB(180, 180, 180)
-		dmg.TextScaled = true
-		dmg.Font = Enum.Font.SourceSans
-		dmg.Text = "傷害 20（一樣）"
-		dmg.ZIndex = 22
-		dmg.Parent = cell
+		-- 特效等級（越貴星星越多；不再顯示傷害）
+		local fx = Instance.new("TextLabel")
+		fx.Name = "FX"
+		fx.Size = UDim2.new(1, -8, 0, 20)
+		fx.Position = UDim2.new(0, 4, 0, 44)
+		fx.BackgroundTransparency = 1
+		fx.TextColor3 = k.color
+		fx.TextScaled = true
+		fx.Font = Enum.Font.SourceSansBold
+		fx.Text = ""
+		fx.ZIndex = 22
+		fx.Parent = cell
+
+		local stars = math.clamp(k.tier or 1, 1, 6)
+		fx.Text = "刀光 " .. string.rep("★", stars) .. string.rep("☆", 6 - stars)
 
 		local pr = Instance.new("TextLabel")
 		pr.Name = "PR"
 		pr.Size = UDim2.new(1, -8, 0, 26)
-		pr.Position = UDim2.new(0, 4, 0, 68)
+		pr.Position = UDim2.new(0, 4, 0, 66)
 		pr.BackgroundTransparency = 1
 		pr.TextScaled = true
 		pr.Font = Enum.Font.SourceSansBold
@@ -592,11 +492,7 @@ Net.OnClientEvent:Connect(function(msg: any)
 		addFeed("🗺 本回合地圖：" .. tostring(data), Color3.fromRGB(140, 220, 255))
 	elseif act == "killfeed" then
 		local d = data :: any
-		if d.killer and d.killer == plr.DisplayName then bumpStreak() end
-		if d.by == "reflect" then
-			addFeed("🗡 " .. d.killer .. " 反彈擊殺 " .. d.victim, Color3.fromRGB(255, 226, 130))
-			addShake(0.3)
-		elseif d.by == "ball" then
+		if d.by == "ball" then
 			addFeed("⚽ " .. d.victim .. " 被球撞飛了！", Color3.fromRGB(255, 150, 80))
 		elseif d.by == "fall" then
 			addFeed("💨 " .. d.victim .. " 掉出場外了！", Color3.fromRGB(150, 200, 255))
@@ -655,26 +551,12 @@ Net.OnClientEvent:Connect(function(msg: any)
 			showToast("💨 疾風加速 6 秒！")
 		end
 	elseif act == "hurt" then
-		addShake(0.5)
 		hurtFlash.Visible = true
 		hurtFlash.BackgroundTransparency = 0.55
 		TweenService:Create(hurtFlash, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
 		task.delay(0.45, function() hurtFlash.Visible = false end)
 	elseif act == "hitsuccess" then
-		floatText("🗡 -20", Color3.fromRGB(255, 238, 160))
-		addShake(0.2)
-	elseif act == "deflect" then
-		bigBanner("REFLECT!", Color3.fromRGB(140, 244, 255), 0.85)
-		floatText("🛡 反彈 x" .. tostring(data), Color3.fromRGB(150, 245, 255))
-		addShake(0.45)
-	elseif act == "reflectkill" then
-		local d = data :: any
-		bigBanner("反殺 " .. tostring(d.name), Color3.fromRGB(255, 218, 120), 1.2)
-		floatText("💰 +15", Color3.fromRGB(255, 214, 92))
-		addShake(0.65)
-	elseif act == "ballwarn" then
-		local d = data :: any
-		ballWarn(tostring(d.name), Color3.fromRGB(d.r, d.g, d.b))
+		showToast("🗡 命中！")
 	end
 end)
 
