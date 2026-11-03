@@ -719,7 +719,7 @@ local function buildLobby()
 		seat.Transparency = 1
 		seat.Anchored = true
 		seat.CanCollide = false
-		seat.CFrame = cf * CFrame.new(0, 1.25, 0.15)
+		seat.CFrame = cf * CFrame.new(0, 1.25, 0.15) * CFrame.Angles(0, math.pi, 0)
 		seat.Parent = bench
 
 		bench.Parent = furnFolder
@@ -787,14 +787,14 @@ local function buildLobby()
 		sL.Name = "SeatL"
 		sL.Size = Vector3.new(2.1, 0.25, 1.4)
 		sL.Transparency = 1; sL.Anchored = true; sL.CanCollide = false
-		sL.CFrame = cf * CFrame.new(-1.2, 1.75, 0)
+		sL.CFrame = cf * CFrame.new(-1.2, 1.75, 0) * CFrame.Angles(0, math.pi, 0)
 		sL.Parent = swing
 
 		local sR = Instance.new("Seat")
 		sR.Name = "SeatR"
 		sR.Size = Vector3.new(2.1, 0.25, 1.4)
 		sR.Transparency = 1; sR.Anchored = true; sR.CanCollide = false
-		sR.CFrame = cf * CFrame.new(1.2, 1.75, 0)
+		sR.CFrame = cf * CFrame.new(1.2, 1.75, 0) * CFrame.Angles(0, math.pi, 0)
 		sR.Parent = swing
 
 		swing.Parent = furnFolder
@@ -1049,10 +1049,11 @@ local function buildLobby()
 
 					local chime = Instance.new("Sound")
 					chime.SoundId = "rbxassetid://1872746013"
-					chime.Volume = 1.2
+					chime.Volume = 1.3
 					chime.PlaybackSpeed = 1.1 + math.random() * 0.1
-					chime.Parent = coin
+					chime.Parent = workspace
 					chime:Play()
+					game:GetService("Debris"):AddItem(chime, 2.0)
 
 					local d = pd(plr)
 					d.coins += 10
@@ -1063,18 +1064,16 @@ local function buildLobby()
 
 					ballBurst(coin.Position, Color3.fromRGB(255, 215, 0), 1.6)
 
-					coin.Transparency = 1
-					bb.Enabled = false
-					task.delay(1.5, function()
-						if coin.Parent then coin:Destroy() end
-					end)
+					-- 撿完立即消失（0秒延遲徹底銷毀實例，絕無殘留火花與判定）
+					coin:Destroy()
 
-					task.delay(math.random(8, 12), function()
+					-- 隔一段隨機時間（10~15秒）後，在空閒隨機點位重新出現
+					task.delay(math.random(10, 15), function()
 						local avail = {}
 						for _, spot in ipairs(SPOTS) do
 							local near = false
 							for ac in pairs(activeCoins) do
-								if (ac.Position - spot).Magnitude < 4 then near = true; break end
+								if ac.Parent and (ac.Position - spot).Magnitude < 4 then near = true; break end
 							end
 							if not near then table.insert(avail, spot) end
 						end
