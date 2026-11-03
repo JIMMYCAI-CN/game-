@@ -403,58 +403,144 @@ local TIER_COLORS = {
 	Color3.fromRGB(255, 60, 60),
 }
 
+
+-- ============================================================
+-- 9 款頂級神兵專屬 3D 幾何模型（每把刀輪廓、結構、特效完全獨一無二，越貴越帥）
+-- ============================================================
+local function buildKnifeParts(parent: Instance, skinId: string, isTool: boolean): BasePart
+	local root = Instance.new("Part")
+	root.Name = isTool and "Handle" or "Root"
+	root.Size = Vector3.new(0.24, 1.2, 0.24)
+	root.Color = Color3.fromRGB(40, 40, 44)
+	root.Material = Enum.Material.Metal
+	root.CanCollide = false
+	root.Anchored = not isTool
+	root.Parent = parent
+
+	local function addPart(name: string, sz: Vector3, cfOffset: CFrame, col: Color3, mat: Enum.Material, shape: Enum.PartType?, trans: number?)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = sz
+		if shape then p.Shape = shape end
+		p.Color = col
+		p.Material = mat
+		p.Transparency = trans or 0
+		p.CanCollide = false
+		p.Anchored = not isTool
+		p.CFrame = root.CFrame * cfOffset
+		p.Parent = parent
+		if isTool then
+			local w = Instance.new("WeldConstraint")
+			w.Part0 = root
+			w.Part1 = p
+			w.Parent = root
+		end
+		return p
+	end
+
+	if skinId == "steel" then
+		-- 精鋼之刃 (T1): 經典戰術刺客匕首 / 短刀
+		addPart("Grip", Vector3.new(0.28, 0.9, 0.28), CFrame.new(0, -0.1, 0), Color3.fromRGB(25, 25, 28), Enum.Material.Rubber)
+		addPart("PommelRing", Vector3.new(0.32, 0.12, 0.32), CFrame.new(0, -0.65, 0), Color3.fromRGB(180, 185, 195), Enum.Material.Metal)
+		addPart("Guard", Vector3.new(0.75, 0.12, 0.26), CFrame.new(0, 0.6, 0), Color3.fromRGB(150, 155, 165), Enum.Material.Metal)
+		addPart("Blade", Vector3.new(0.1, 2.2, 0.44), CFrame.new(0, 1.75, 0), Color3.fromRGB(200, 205, 215), Enum.Material.Metal)
+		addPart("Edge", Vector3.new(0.12, 2.1, 0.08), CFrame.new(0, 1.75, -0.23), Color3.fromRGB(240, 245, 255), Enum.Material.Metal)
+	elseif skinId == "obsidian" then
+		-- 黑曜石刺 (T2): 鋒銳暗黑火山琉璃刺
+		addPart("Grip", Vector3.new(0.3, 0.95, 0.3), CFrame.new(0, -0.1, 0), Color3.fromRGB(22, 18, 28), Enum.Material.Slate)
+		addPart("Pommel", Vector3.new(0.35, 0.2, 0.35), CFrame.new(0, -0.65, 0), Color3.fromRGB(130, 45, 200), Enum.Material.Neon)
+		addPart("GuardL", Vector3.new(0.4, 0.12, 0.22), CFrame.new(-0.35, 0.65, 0) * CFrame.Angles(0, 0, math.rad(-25)), Color3.fromRGB(35, 30, 45), Enum.Material.Glass)
+		addPart("GuardR", Vector3.new(0.4, 0.12, 0.22), CFrame.new(0.35, 0.65, 0) * CFrame.Angles(0, 0, math.rad(25)), Color3.fromRGB(35, 30, 45), Enum.Material.Glass)
+		addPart("Blade", Vector3.new(0.14, 2.5, 0.42), CFrame.new(0, 1.9, 0), Color3.fromRGB(35, 28, 50), Enum.Material.Glass, nil, 0.15)
+		addPart("RuneSpine", Vector3.new(0.16, 2.3, 0.12), CFrame.new(0, 1.9, 0), Color3.fromRGB(170, 60, 255), Enum.Material.Neon)
+	elseif skinId == "thunder" then
+		-- 雷霆之薙 (T3): 鋸齒閃電彎刀 / 電磁叉護手
+		addPart("Grip", Vector3.new(0.26, 1.0, 0.26), CFrame.new(0, -0.1, 0), Color3.fromRGB(20, 30, 50), Enum.Material.Fabric)
+		addPart("PommelBolt", Vector3.new(0.35, 0.3, 0.2), CFrame.new(0, -0.7, 0), Color3.fromRGB(255, 215, 60), Enum.Material.Neon)
+		addPart("GuardL", Vector3.new(0.5, 0.14, 0.24), CFrame.new(-0.4, 0.65, 0) * CFrame.Angles(0, 0, math.rad(-35)), Color3.fromRGB(90, 170, 255), Enum.Material.Neon)
+		addPart("GuardR", Vector3.new(0.5, 0.14, 0.24), CFrame.new(0.4, 0.65, 0) * CFrame.Angles(0, 0, math.rad(35)), Color3.fromRGB(90, 170, 255), Enum.Material.Neon)
+		addPart("BladeSeg1", Vector3.new(0.12, 1.0, 0.5), CFrame.new(0, 1.15, 0), Color3.fromRGB(90, 170, 255), Enum.Material.Neon)
+		addPart("BladeSeg2", Vector3.new(0.12, 1.0, 0.44), CFrame.new(0.1, 2.05, 0) * CFrame.Angles(0, 0, math.rad(-10)), Color3.fromRGB(130, 205, 255), Enum.Material.Neon)
+		addPart("BladeSeg3", Vector3.new(0.12, 0.9, 0.36), CFrame.new(-0.05, 2.9, 0) * CFrame.Angles(0, 0, math.rad(12)), Color3.fromRGB(200, 240, 255), Enum.Material.Neon)
+	elseif skinId == "sakura" then
+		-- 櫻花武士刀 (T4): 正統和風野太刀 / 金色櫻花刀鐔
+		addPart("Grip", Vector3.new(0.24, 1.3, 0.24), CFrame.new(0, -0.15, 0), Color3.fromRGB(240, 235, 235), Enum.Material.SmoothPlastic)
+		addPart("ItoWrap", Vector3.new(0.26, 1.1, 0.26), CFrame.new(0, -0.15, 0), Color3.fromRGB(180, 50, 90), Enum.Material.Fabric)
+		addPart("PommelCap", Vector3.new(0.3, 0.15, 0.3), CFrame.new(0, -0.75, 0), Color3.fromRGB(240, 195, 70), Enum.Material.Metal)
+		addPart("Tsuba", Vector3.new(0.12, 0.78, 0.78), CFrame.new(0, 0.62, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(240, 195, 70), Enum.Material.Metal, Enum.PartType.Cylinder)
+		addPart("Blade", Vector3.new(0.08, 3.1, 0.36), CFrame.new(0, 2.2, 0), Color3.fromRGB(255, 185, 215), Enum.Material.SmoothPlastic)
+		addPart("Hamon", Vector3.new(0.1, 3.0, 0.1), CFrame.new(0, 2.2, -0.16), Color3.fromRGB(255, 230, 240), Enum.Material.Neon)
+	elseif skinId == "frost" then
+		-- 霜之哀傷 (T4): 冰晶重劍 / 惡魔冰角護手與兩側突刺
+		addPart("Grip", Vector3.new(0.28, 1.2, 0.28), CFrame.new(0, -0.1, 0), Color3.fromRGB(30, 45, 60), Enum.Material.Metal)
+		addPart("PommelIce", Vector3.new(0.4, 0.28, 0.4), CFrame.new(0, -0.75, 0), Color3.fromRGB(160, 230, 255), Enum.Material.Ice)
+		addPart("GuardHoriz", Vector3.new(1.3, 0.2, 0.38), CFrame.new(0, 0.62, 0), Color3.fromRGB(60, 95, 130), Enum.Material.Metal)
+		addPart("GuardHornL", Vector3.new(0.2, 0.5, 0.2), CFrame.new(-0.6, 0.85, 0) * CFrame.Angles(0, 0, math.rad(30)), Color3.fromRGB(160, 230, 255), Enum.Material.Ice)
+		addPart("GuardHornR", Vector3.new(0.2, 0.5, 0.2), CFrame.new(0.6, 0.85, 0) * CFrame.Angles(0, 0, math.rad(-30)), Color3.fromRGB(160, 230, 255), Enum.Material.Ice)
+		addPart("BladeMain", Vector3.new(0.14, 3.2, 0.68), CFrame.new(0, 2.25, 0), Color3.fromRGB(170, 235, 255), Enum.Material.Ice, nil, 0.1)
+		addPart("Spike1L", Vector3.new(0.35, 0.16, 0.12), CFrame.new(-0.45, 1.8, 0) * CFrame.Angles(0, 0, math.rad(35)), Color3.fromRGB(200, 245, 255), Enum.Material.Neon)
+		addPart("Spike1R", Vector3.new(0.35, 0.16, 0.12), CFrame.new(0.45, 1.8, 0) * CFrame.Angles(0, 0, math.rad(-35)), Color3.fromRGB(200, 245, 255), Enum.Material.Neon)
+		addPart("Spike2L", Vector3.new(0.3, 0.14, 0.12), CFrame.new(-0.42, 2.6, 0) * CFrame.Angles(0, 0, math.rad(35)), Color3.fromRGB(200, 245, 255), Enum.Material.Neon)
+		addPart("Spike2R", Vector3.new(0.3, 0.14, 0.12), CFrame.new(0.42, 2.6, 0) * CFrame.Angles(0, 0, math.rad(-35)), Color3.fromRGB(200, 245, 255), Enum.Material.Neon)
+	elseif skinId == "astra" then
+		-- 星軌重刃 (T5): 未來星界斬艦刀 / 環形星盤與分叉雙刃頭
+		addPart("Grip", Vector3.new(0.26, 1.3, 0.26), CFrame.new(0, -0.15, 0), Color3.fromRGB(25, 35, 35), Enum.Material.Metal)
+		addPart("PommelCore", Vector3.new(0.38, 0.38, 0.38), CFrame.new(0, -0.85, 0), Color3.fromRGB(120, 255, 180), Enum.Material.Neon)
+		addPart("AstroRing1", Vector3.new(0.12, 1.1, 1.1), CFrame.new(0, 0.65, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(120, 255, 180), Enum.Material.Neon, Enum.PartType.Cylinder, 0.3)
+		addPart("AstroRing2", Vector3.new(0.1, 0.8, 0.8), CFrame.new(0, 0.65, 0) * CFrame.Angles(math.rad(45), 0, math.rad(90)), Color3.fromRGB(200, 255, 230), Enum.Material.Neon, Enum.PartType.Cylinder, 0.4)
+		addPart("CleaverBody", Vector3.new(0.16, 3.4, 0.84), CFrame.new(0, 2.4, 0), Color3.fromRGB(35, 45, 50), Enum.Material.Metal)
+		addPart("CleaverEdge", Vector3.new(0.18, 3.4, 0.15), CFrame.new(0, 2.4, -0.45), Color3.fromRGB(120, 255, 180), Enum.Material.Neon)
+		addPart("SplitTipL", Vector3.new(0.16, 0.6, 0.35), CFrame.new(0, 4.2, -0.25) * CFrame.Angles(0, 0, math.rad(-15)), Color3.fromRGB(120, 255, 180), Enum.Material.Neon)
+		addPart("SplitTipR", Vector3.new(0.16, 0.6, 0.35), CFrame.new(0, 4.2, 0.25) * CFrame.Angles(0, 0, math.rad(15)), Color3.fromRGB(120, 255, 180), Enum.Material.Neon)
+	elseif skinId == "hydra" then
+		-- 九頭蛇牙鐮 (T5): 劇毒三刃戰鐮 / 蛇鱗長柄
+		addPart("Grip", Vector3.new(0.24, 1.8, 0.24), CFrame.new(0, -0.3, 0), Color3.fromRGB(30, 45, 30), Enum.Material.Slate)
+		addPart("SnakePommel", Vector3.new(0.36, 0.4, 0.36), CFrame.new(0, -1.25, 0), Color3.fromRGB(100, 220, 80), Enum.Material.Neon)
+		addPart("ShaftTop", Vector3.new(0.3, 0.5, 0.3), CFrame.new(0, 0.75, 0), Color3.fromRGB(50, 75, 50), Enum.Material.Metal)
+		addPart("ScytheBlade1", Vector3.new(0.14, 0.5, 1.2), CFrame.new(0, 0.95, -0.6) * CFrame.Angles(math.rad(25), 0, 0), Color3.fromRGB(100, 220, 80), Enum.Material.Neon)
+		addPart("ScytheBlade2", Vector3.new(0.14, 0.45, 1.6), CFrame.new(0, 1.3, -1.5) * CFrame.Angles(math.rad(55), 0, 0), Color3.fromRGB(130, 255, 110), Enum.Material.Neon)
+		addPart("ScytheTip", Vector3.new(0.14, 0.35, 1.0), CFrame.new(0, 1.35, -2.5) * CFrame.Angles(math.rad(95), 0, 0), Color3.fromRGB(180, 255, 150), Enum.Material.Neon)
+		addPart("SubFang1", Vector3.new(0.12, 0.3, 0.6), CFrame.new(0, 0.7, 0.35) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(100, 220, 80), Enum.Material.Neon)
+		addPart("SubFang2", Vector3.new(0.12, 0.25, 0.5), CFrame.new(0, 0.5, 0.75) * CFrame.Angles(math.rad(-65), 0, 0), Color3.fromRGB(130, 255, 110), Enum.Material.Neon)
+	elseif skinId == "blueflame" then
+		-- 青焰冥皇劍 (T6): 皇家雙手巨劍 / 波狀焰刃與龍翼展翅
+		addPart("Grip", Vector3.new(0.28, 1.6, 0.28), CFrame.new(0, -0.2, 0), Color3.fromRGB(20, 25, 40), Enum.Material.Fabric)
+		addPart("PommelRoyal", Vector3.new(0.42, 0.3, 0.42), CFrame.new(0, -1.05, 0), Color3.fromRGB(240, 200, 60), Enum.Material.Metal)
+		addPart("GuardCenter", Vector3.new(0.5, 0.25, 0.4), CFrame.new(0, 0.65, 0), Color3.fromRGB(240, 200, 60), Enum.Material.Metal)
+		addPart("WingL", Vector3.new(0.7, 0.2, 0.25), CFrame.new(-0.55, 0.75, 0) * CFrame.Angles(0, 0, math.rad(-25)), Color3.fromRGB(60, 160, 255), Enum.Material.Neon)
+		addPart("WingR", Vector3.new(0.7, 0.2, 0.25), CFrame.new(0.55, 0.75, 0) * CFrame.Angles(0, 0, math.rad(25)), Color3.fromRGB(60, 160, 255), Enum.Material.Neon)
+		addPart("Flamberge1", Vector3.new(0.16, 1.3, 0.7), CFrame.new(0.08, 1.35, 0) * CFrame.Angles(0, 0, math.rad(-6)), Color3.fromRGB(60, 160, 255), Enum.Material.Neon)
+		addPart("Flamberge2", Vector3.new(0.16, 1.3, 0.65), CFrame.new(-0.08, 2.5, 0) * CFrame.Angles(0, 0, math.rad(7)), Color3.fromRGB(90, 185, 255), Enum.Material.Neon)
+		addPart("Flamberge3", Vector3.new(0.16, 1.2, 0.5), CFrame.new(0.05, 3.65, 0) * CFrame.Angles(0, 0, math.rad(-5)), Color3.fromRGB(150, 215, 255), Enum.Material.Neon)
+	elseif skinId == "phoenix" then
+		-- 鳳凰神滅神刀 (T6): 滅世涅槃神刃 / 鳳羽翼鍔與熾陽光環
+		addPart("Grip", Vector3.new(0.28, 1.6, 0.28), CFrame.new(0, -0.2, 0), Color3.fromRGB(45, 18, 12), Enum.Material.Wood)
+		addPart("SunHaloPommel", Vector3.new(0.12, 0.7, 0.7), CFrame.new(0, -1.05, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(255, 190, 40), Enum.Material.Neon, Enum.PartType.Cylinder)
+		addPart("GuardCore", Vector3.new(0.6, 0.3, 0.4), CFrame.new(0, 0.65, 0), Color3.fromRGB(255, 190, 40), Enum.Material.Metal)
+		addPart("PhoenixWingL1", Vector3.new(0.8, 0.2, 0.25), CFrame.new(-0.65, 0.8, 0) * CFrame.Angles(0, 0, math.rad(-30)), Color3.fromRGB(255, 100, 30), Enum.Material.Neon)
+		addPart("PhoenixWingR1", Vector3.new(0.8, 0.2, 0.25), CFrame.new(0.65, 0.8, 0) * CFrame.Angles(0, 0, math.rad(30)), Color3.fromRGB(255, 100, 30), Enum.Material.Neon)
+		addPart("PhoenixWingL2", Vector3.new(0.5, 0.15, 0.2), CFrame.new(-1.15, 1.1, 0) * CFrame.Angles(0, 0, math.rad(-50)), Color3.fromRGB(255, 190, 40), Enum.Material.Neon)
+		addPart("PhoenixWingR2", Vector3.new(0.5, 0.15, 0.2), CFrame.new(1.15, 1.1, 0) * CFrame.Angles(0, 0, math.rad(50)), Color3.fromRGB(255, 190, 40), Enum.Material.Neon)
+		addPart("SunBladeMain", Vector3.new(0.14, 3.8, 0.65), CFrame.new(0, 2.6, 0), Color3.fromRGB(255, 120, 30), Enum.Material.Neon)
+		addPart("SunEdge", Vector3.new(0.16, 3.7, 0.14), CFrame.new(0, 2.6, -0.35), Color3.fromRGB(255, 230, 90), Enum.Material.Neon)
+		addPart("DragonRidge1", Vector3.new(0.15, 0.5, 0.2), CFrame.new(0, 1.8, 0.38) * CFrame.Angles(math.rad(-25), 0, 0), Color3.fromRGB(255, 190, 40), Enum.Material.Metal)
+		addPart("DragonRidge2", Vector3.new(0.15, 0.5, 0.2), CFrame.new(0, 2.6, 0.38) * CFrame.Angles(math.rad(-25), 0, 0), Color3.fromRGB(255, 190, 40), Enum.Material.Metal)
+		addPart("DragonRidge3", Vector3.new(0.15, 0.5, 0.2), CFrame.new(0, 3.4, 0.38) * CFrame.Angles(math.rad(-25), 0, 0), Color3.fromRGB(255, 190, 40), Enum.Material.Metal)
+	end
+
+	if isTool then
+		parent.PrimaryPart = root
+	elseif parent:IsA("Model") then
+		parent.PrimaryPart = root
+	end
+	return root
+end
+
 -- 建立 3D 實體模型
 local function make3DKnife(k: {[string]: any}): Model
 	local m = Instance.new("Model")
-	local tier = k.tier or 1
-	local color = k.color or Color3.fromRGB(200, 200, 210)
-
-	local handle = Instance.new("Part")
-	handle.Name = "Handle"
-	handle.Size = Vector3.new(0.24, 1.3, 0.24)
-	handle.Color = Color3.fromRGB(45, 45, 50)
-	handle.Material = Enum.Material.Metal
-	handle.Anchored = true
-	handle.Parent = m
-
-	local grip = Instance.new("Part")
-	grip.Name = "Grip"
-	grip.Size = Vector3.new(0.32, 0.9, 0.32)
-	grip.Color = Color3.fromRGB(25, 25, 28)
-	grip.Material = Enum.Material.Rubber
-	grip.Anchored = true
-	grip.CFrame = handle.CFrame * CFrame.new(0, -0.2, 0)
-	grip.Parent = m
-
-	local guard = Instance.new("Part")
-	guard.Name = "Guard"
-	guard.Size = Vector3.new(0.85, 0.16, 0.34)
-	guard.Color = color
-	guard.Material = Enum.Material.Metal
-	guard.Anchored = true
-	guard.CFrame = handle.CFrame * CFrame.new(0, 0.65, 0)
-	guard.Parent = m
-
-	local bladeLen = 2.4 + tier * 0.24
-	local blade = Instance.new("Part")
-	blade.Name = "Blade"
-	blade.Size = Vector3.new(0.12, bladeLen, 0.52 + tier * 0.05)
-	blade.Color = color
-	blade.Material = (tier >= 4) and Enum.Material.Neon or Enum.Material.Metal
-	blade.Anchored = true
-	blade.CFrame = handle.CFrame * CFrame.new(0, 0.65 + bladeLen / 2, 0)
-	blade.Parent = m
-
-	local edge = Instance.new("Part")
-	edge.Name = "Edge"
-	edge.Size = Vector3.new(0.14, bladeLen * 0.95, 0.08)
-	edge.Color = Color3.new(1, 1, 1):Lerp(color, 0.35)
-	edge.Material = Enum.Material.Neon
-	edge.Anchored = true
-	edge.CFrame = blade.CFrame * CFrame.new(0, 0, -(blade.Size.Z / 2))
-	edge.Parent = m
-
-	m.PrimaryPart = handle
+	m.Name = "Preview_" .. tostring(k.id)
+	buildKnifeParts(m, tostring(k.id), false)
 	return m
 end
 
@@ -822,5 +908,4 @@ Net.OnClientEvent:Connect(function(msg: any)
 end)
 
 showToast("歡迎來到躲避球大亂鬥！靠近櫃檯買刀＆抽獎")
-
 

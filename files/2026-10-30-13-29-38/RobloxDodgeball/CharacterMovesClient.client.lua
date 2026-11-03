@@ -33,14 +33,14 @@ local CONFIG = {
 
 	-- 速度
 	WalkSpeed = 16,          -- 一般走路速度
-	RunSpeed = 34,           -- 跑步（衝刺）速度
-	SlideSpeed = 60,         -- 滑剷初速
+	RunSpeed = 44,           -- 跑步（衝刺）速度（加快奔馳快感）
+	SlideSpeed = 64,         -- 滑剷初速
 
 	-- 畫面衝刺感（數值越大，畫面越「拉長」）
 	BaseFov = 70,
-	RunFov = 88,
-	SlideFov = 104,
-	DashFov = 100,
+	RunFov = 92,
+	SlideFov = 106,
+	DashFov = 102,
 	FovSmooth = 8,
 
 	-- 滑剷
@@ -729,6 +729,33 @@ local function setupCharacter(newCharacter)
 		end
 		if isDashing then
 			endDash()
+		end
+	end))
+
+	-- 坐下動作（隊友定制 sitting animation id: 110976420397279）
+	local sitTrack: AnimationTrack? = nil
+	local okSit, sitAnim = pcall(function()
+		local a = Instance.new("Animation")
+		a.AnimationId = "rbxassetid://110976420397279"
+		return a
+	end)
+	if okSit and sitAnim and animator then
+		pcall(function()
+			sitTrack = animator:LoadAnimation(sitAnim)
+			sitTrack.Priority = Enum.AnimationPriority.Action4
+			sitTrack.Looped = true
+		end)
+	end
+
+	addCharacterConnection(humanoid.Seated:Connect(function(isSeated, seatPart)
+		if isSeated then
+			if sitTrack then
+				sitTrack:Play(0.2)
+			end
+		else
+			if sitTrack and sitTrack.IsPlaying then
+				sitTrack:Stop(0.25)
+			end
 		end
 	end))
 

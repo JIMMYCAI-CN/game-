@@ -81,4 +81,3 @@ Players.PlayerRemoving:Connect(function(player)
 	cooldowns[player] = nil
 end)
 
-

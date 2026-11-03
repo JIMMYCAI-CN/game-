@@ -656,41 +656,191 @@ local function buildLobby()
 		end
 	end)
 
-	-- 11. 優雅擺放使用者的憤怒鳥與休息區模型（從 ServerStorage.LobbyDeco 讀取，底部精確貼地不卡地，新增多款鳥豬）
+
+	-- ============================================================
+	-- 12. 休閒設施：長椅、櫻花鞦韆、沙發（均帶 Roblox Seat，坐下自動播放動作 110976420397279）
+	-- ============================================================
+	local furnFolder = Instance.new("Folder")
+	furnFolder.Name = "Furniture"
+	furnFolder.Parent = island
+
+	local function makeBench(cf: CFrame)
+		local bench = Instance.new("Model")
+		bench.Name = "ParkBench"
+
+		-- 鑄鐵椅架
+		for _, xOff in ipairs({-2.2, 2.2}) do
+			local leg = Instance.new("Part")
+			leg.Name = "IronLeg"
+			leg.Size = Vector3.new(0.3, 1.4, 1.8)
+			leg.Color = Color3.fromRGB(38, 40, 44)
+			leg.Material = Enum.Material.Metal
+			leg.Anchored = true; leg.CanCollide = true
+			leg.CFrame = cf * CFrame.new(xOff, 0.7, 0)
+			leg.Parent = bench
+
+			local arm = Instance.new("Part")
+			arm.Name = "Armrest"
+			arm.Size = Vector3.new(0.35, 0.25, 1.9)
+			arm.Color = Color3.fromRGB(48, 52, 58)
+			arm.Material = Enum.Material.Metal
+			arm.Anchored = true; arm.CanCollide = true
+			arm.CFrame = cf * CFrame.new(xOff, 1.45, -0.05)
+			arm.Parent = bench
+		end
+
+		-- 木質坐墊板條
+		for i = 1, 4 do
+			local slat = Instance.new("Part")
+			slat.Name = "SeatSlat" .. i
+			slat.Size = Vector3.new(4.4, 0.18, 0.36)
+			slat.Color = Color3.fromRGB(115, 75, 48)
+			slat.Material = Enum.Material.WoodPlanks
+			slat.Anchored = true; slat.CanCollide = true
+			slat.CFrame = cf * CFrame.new(0, 1.15, -0.6 + i * 0.4)
+			slat.Parent = bench
+		end
+
+		-- 木質靠背
+		for i = 1, 3 do
+			local back = Instance.new("Part")
+			back.Name = "BackSlat" .. i
+			back.Size = Vector3.new(4.4, 0.32, 0.18)
+			back.Color = Color3.fromRGB(125, 82, 54)
+			back.Material = Enum.Material.WoodPlanks
+			back.Anchored = true; back.CanCollide = true
+			back.CFrame = cf * CFrame.new(0, 1.5 + i * 0.38, -0.7) * CFrame.Angles(math.rad(-10), 0, 0)
+			back.Parent = bench
+		end
+
+		local seat = Instance.new("Seat")
+		seat.Name = "Seat"
+		seat.Size = Vector3.new(4.2, 0.3, 1.5)
+		seat.Transparency = 1
+		seat.Anchored = true
+		seat.CanCollide = false
+		seat.CFrame = cf * CFrame.new(0, 1.25, 0.15)
+		seat.Parent = bench
+
+		bench.Parent = furnFolder
+		return bench
+	end
+
+	local function makeSwing(cf: CFrame)
+		local swing = Instance.new("Model")
+		swing.Name = "CherryBlossomSwing"
+
+		local topBeam = Instance.new("Part")
+		topBeam.Name = "TopBeam"
+		topBeam.Size = Vector3.new(8.0, 0.6, 0.6)
+		topBeam.Color = Color3.fromRGB(75, 46, 32)
+		topBeam.Material = Enum.Material.Wood
+		topBeam.Anchored = true; topBeam.CanCollide = true
+		topBeam.CFrame = cf * CFrame.new(0, 6.2, 0)
+		topBeam.Parent = swing
+
+		for _, xSide in ipairs({-3.6, 3.6}) do
+			for _, zAng in ipairs({-18, 18}) do
+				local post = Instance.new("Part")
+				post.Name = "SwingPost"
+				post.Size = Vector3.new(0.5, 6.6, 0.5)
+				post.Color = Color3.fromRGB(85, 52, 36)
+				post.Material = Enum.Material.Wood
+				post.Anchored = true; post.CanCollide = true
+				post.CFrame = cf * CFrame.new(xSide, 3.1, 0) * CFrame.Angles(0, 0, math.rad(xSide > 0 and -8 or 8)) * CFrame.Angles(math.rad(zAng), 0, 0)
+				post.Parent = swing
+			end
+		end
+
+		for _, xOff in ipairs({-2.0, 2.0}) do
+			for _, zOff in ipairs({-0.45, 0.45}) do
+				local chain = Instance.new("Part")
+				chain.Name = "SwingChain"
+				chain.Size = Vector3.new(0.08, 4.2, 0.08)
+				chain.Color = Color3.fromRGB(180, 180, 190)
+				chain.Material = Enum.Material.Metal
+				chain.Anchored = true; chain.CanCollide = false
+				chain.CFrame = cf * CFrame.new(xOff, 3.8, zOff)
+				chain.Parent = swing
+			end
+		end
+
+		local seatPlank = Instance.new("Part")
+		seatPlank.Name = "SwingPlank"
+		seatPlank.Size = Vector3.new(4.8, 0.25, 1.6)
+		seatPlank.Color = Color3.fromRGB(140, 90, 58)
+		seatPlank.Material = Enum.Material.WoodPlanks
+		seatPlank.Anchored = true; seatPlank.CanCollide = true
+		seatPlank.CFrame = cf * CFrame.new(0, 1.6, 0)
+		seatPlank.Parent = swing
+
+		local seatBack = Instance.new("Part")
+		seatBack.Name = "SwingBack"
+		seatBack.Size = Vector3.new(4.8, 0.9, 0.2)
+		seatBack.Color = Color3.fromRGB(140, 90, 58)
+		seatBack.Material = Enum.Material.WoodPlanks
+		seatBack.Anchored = true; seatBack.CanCollide = true
+		seatBack.CFrame = cf * CFrame.new(0, 2.15, -0.7)
+		seatBack.Parent = swing
+
+		local sL = Instance.new("Seat")
+		sL.Name = "SeatL"
+		sL.Size = Vector3.new(2.1, 0.25, 1.4)
+		sL.Transparency = 1; sL.Anchored = true; sL.CanCollide = false
+		sL.CFrame = cf * CFrame.new(-1.2, 1.75, 0)
+		sL.Parent = swing
+
+		local sR = Instance.new("Seat")
+		sR.Name = "SeatR"
+		sR.Size = Vector3.new(2.1, 0.25, 1.4)
+		sR.Transparency = 1; sR.Anchored = true; sR.CanCollide = false
+		sR.CFrame = cf * CFrame.new(1.2, 1.75, 0)
+		sR.Parent = swing
+
+		swing.Parent = furnFolder
+		return swing
+	end
+
+	-- 擺放 4 張景觀長椅（面向大廳廣場）
+	makeBench(CFrame.new(LOBBY_CENTER + Vector3.new(0, LY_DECK, -46)) * CFrame.Angles(0, math.rad(0), 0))
+	makeBench(CFrame.new(LOBBY_CENTER + Vector3.new(46, LY_DECK, -30)) * CFrame.Angles(0, math.rad(-125), 0))
+	makeBench(CFrame.new(LOBBY_CENTER + Vector3.new(-46, LY_DECK, -30)) * CFrame.Angles(0, math.rad(125), 0))
+	makeBench(CFrame.new(LOBBY_CENTER + Vector3.new(-45, LY_DECK, 34)) * CFrame.Angles(0, math.rad(45), 0))
+
+	-- 擺放浪漫櫻花樹下雙人鞦韆（西南花園）
+	makeSwing(CFrame.new(LOBBY_CENTER + Vector3.new(-38, LY_DECK, 46)) * CFrame.Angles(0, math.rad(30), 0))
+
+	-- 擺放用戶模型（憤怒鳥、沙發、茶几、排行榜等）
 	local deco = game:GetService("ServerStorage"):FindFirstChild("LobbyDeco")
 	if deco then
-		local function spawnDecoModel(name: string, targetX: number, targetFloorY: number, targetZ: number, yawDeg: number, scale: number?)
+		local function spawnDecoModel(name: string, targetX: number, targetFloorY: number, targetZ: number, scaleMultiplier: number?)
 			local tpl = deco:FindFirstChild(name)
-			if not tpl then return end
+			if not tpl then return nil end
 			local m = tpl:Clone()
-			if scale and scale ~= 1.0 and m:IsA("Model") then
-				m:ScaleTo(scale)
-			end
 			for _, d in ipairs(m:GetDescendants()) do
 				if d:IsA("BasePart") then
 					d.Anchored = true
 					d.CanCollide = true
 				end
 			end
-			if m:IsA("Folder") then
-				local newModel = Instance.new("Model")
-				newModel.Name = m.Name
-				for _, ch in ipairs(m:GetChildren()) do
-					ch.Parent = newModel
-				end
-				m = newModel
+			if scaleMultiplier and scaleMultiplier ~= 1.0 and m:IsA("Model") then
+				pcall(function() m:ScaleTo(scaleMultiplier) end)
 			end
-			local rotCF = CFrame.Angles(0, math.rad(yawDeg), 0)
+
+			-- 面向大廳中心 (0, 50, 0)，絕不面壁思過！
+			local pos = Vector3.new(targetX, targetFloorY, targetZ)
+			local lookCF = CFrame.lookAt(pos, Vector3.new(LOBBY_CENTER.X, pos.Y, LOBBY_CENTER.Z))
+
 			if m:IsA("Model") then
-				m:PivotTo(rotCF)
+				m:PivotTo(lookCF)
 				local cf, sz = m:GetBoundingBox()
 				local bottomY = cf.Position.Y - sz.Y / 2
 				local deltaY = (targetFloorY + 0.05) - bottomY
 				local finalPos = Vector3.new(targetX, cf.Position.Y + deltaY, targetZ)
-				m:PivotTo(CFrame.new(finalPos) * rotCF.Rotation)
+				m:PivotTo(CFrame.new(finalPos) * lookCF.Rotation)
 			elseif m:IsA("BasePart") then
 				local sz = m.Size
-				m.CFrame = CFrame.new(targetX, targetFloorY + sz.Y / 2 + 0.05, targetZ) * rotCF
+				m.CFrame = CFrame.new(targetX, targetFloorY + sz.Y / 2 + 0.05, targetZ) * lookCF.Rotation
 			end
 			m.Parent = island
 			return m
@@ -699,26 +849,122 @@ local function buildLobby()
 		local floorY = LOBBY_CENTER.Y + LY_DECK
 		local daisY = LOBBY_CENTER.Y + LY_DAIS
 
-		-- 東側休閒茶歇區（Loveseat 沙發、茶几與憤怒鳥 Chuck、Matilda、Minion Pig）
-		spawnDecoModel("Loveseat_Dark stone grey", LOBBY_CENTER.X + 58, floorY, LOBBY_CENTER.Z + 6, 180)
-		spawnDecoModel("Table", LOBBY_CENTER.X + 58, floorY, LOBBY_CENTER.Z + 11, 0)
-		spawnDecoModel("Chuck the Angry Bird", LOBBY_CENTER.X + 52, floorY, LOBBY_CENTER.Z + 10, 120)
-		spawnDecoModel("Matilda", LOBBY_CENTER.X + 64, floorY, LOBBY_CENTER.Z + 16, -45)
-		spawnDecoModel("Minion Pig", LOBBY_CENTER.X + 63, floorY, LOBBY_CENTER.Z + 6, -130)
+		-- 東側休閒茶歇區（Loveseat 沙發帶 Seat、茶几與收音機、憤怒鳥 Chuck、Matilda、Minion Pig）
+		local sofa = spawnDecoModel("Loveseat_Dark stone grey", LOBBY_CENTER.X + 58, floorY, LOBBY_CENTER.Z + 6)
+		if sofa then
+			local s1 = Instance.new("Seat")
+			s1.Name = "SofaSeatL"; s1.Size = Vector3.new(2.2, 0.4, 2.2); s1.Transparency = 1; s1.Anchored = true; s1.CanCollide = false
+			s1.CFrame = CFrame.new(LOBBY_CENTER.X + 56.5, floorY + 1.2, LOBBY_CENTER.Z + 6) * CFrame.Angles(0, math.pi, 0)
+			s1.Parent = sofa
 
-		-- 西側萌鳥漫步區（Red, The Blues, pig bored, Bomb 炸彈鳥）
-		spawnDecoModel("Red", LOBBY_CENTER.X - 58, floorY, LOBBY_CENTER.Z + 6, -60)
-		spawnDecoModel("The Blues", LOBBY_CENTER.X - 62, floorY, LOBBY_CENTER.Z + 14, 30)
-		spawnDecoModel("pig bored", LOBBY_CENTER.X - 54, floorY, LOBBY_CENTER.Z + 10, -110)
-		spawnDecoModel("Bomb", LOBBY_CENTER.X - 54, floorY, LOBBY_CENTER.Z - 16, 75)
+			local s2 = Instance.new("Seat")
+			s2.Name = "SofaSeatR"; s2.Size = Vector3.new(2.2, 0.4, 2.2); s2.Transparency = 1; s2.Anchored = true; s2.CanCollide = false
+			s2.CFrame = CFrame.new(LOBBY_CENTER.X + 59.5, floorY + 1.2, LOBBY_CENTER.Z + 6) * CFrame.Angles(0, math.pi, 0)
+			s2.Parent = sofa
+		end
 
-		-- 南側創作者榮譽殿堂兩翼守護神獸（King Pig 豬王 與 Terence 特倫斯巨紅鳥）
-		spawnDecoModel("King Pig", LOBBY_CENTER.X - 28, daisY, LOBBY_CENTER.Z + 52, 45, 0.85)
-		spawnDecoModel("Terence", LOBBY_CENTER.X + 28, daisY, LOBBY_CENTER.Z + 52, -45, 0.9)
+		local tableModel = spawnDecoModel("Table", LOBBY_CENTER.X + 58, floorY, LOBBY_CENTER.Z + 12)
+		if tableModel then
+			local radio = tableModel:FindFirstChild("Radio", true)
+			local mainPart: BasePart? = nil
+			if radio then
+				for _, d in ipairs(radio:GetDescendants()) do
+					if d:IsA("BasePart") then mainPart = d; break end
+				end
+			end
+			if not mainPart and tableModel.PrimaryPart then mainPart = tableModel.PrimaryPart end
+			if mainPart then
+				local PLAYLIST = {
+					{name = "Lo-Fi 沉思", id = "rbxassetid://1837879082"},
+					{name = "街機躍動", id = "rbxassetid://1843404009"},
+					{name = "櫻花竹笛", id = "rbxassetid://9043887091"},
+					{name = "木吉他黃昏", id = "rbxassetid://1840683641"},
+				}
+				local bgm = Instance.new("Sound")
+				bgm.Name = "RadioBGM"
+				bgm.Volume = 0.65
+				bgm.Looped = true
+				bgm.RollOffMaxDistance = 85
+				bgm.RollOffMinDistance = 12
+				bgm.RollOffMode = Enum.RollOffMode.InverseTapered
+				bgm.Parent = mainPart
 
-		-- 東北角觀景排行榜展台
-		spawnDecoModel("Leaderboard", LOBBY_CENTER.X + 34, floorY, LOBBY_CENTER.Z - 42, 195)
+				local bb = Instance.new("BillboardGui")
+				bb.Name = "RadioDisplay"
+				bb.Size = UDim2.new(0, 150, 0, 48)
+				bb.StudsOffset = Vector3.new(0, 2.2, 0)
+				bb.AlwaysOnTop = true
+				bb.MaxDistance = 45
+
+				local frame = Instance.new("Frame")
+				frame.Size = UDim2.new(1, 0, 1, 0)
+				frame.BackgroundColor3 = Color3.fromRGB(24, 26, 32)
+				frame.BackgroundTransparency = 0.25
+				frame.BorderSizePixel = 0
+				local uic = Instance.new("UICorner"); uic.CornerRadius = UDim.new(0, 8); uic.Parent = frame
+
+				local titleLbl = Instance.new("TextLabel")
+				titleLbl.Size = UDim2.new(1, -8, 0, 22); titleLbl.Position = UDim2.new(0, 4, 0, 3)
+				titleLbl.BackgroundTransparency = 1; titleLbl.Text = "📻 復古收音機"
+				titleLbl.TextColor3 = Color3.fromRGB(255, 215, 100); titleLbl.Font = Enum.Font.GothamBold; titleLbl.TextSize = 14; titleLbl.Parent = frame
+
+				local trackLbl = Instance.new("TextLabel")
+				trackLbl.Size = UDim2.new(1, -8, 0, 20); trackLbl.Position = UDim2.new(0, 4, 0, 24)
+				trackLbl.BackgroundTransparency = 1; trackLbl.Text = "🎶 " .. PLAYLIST[1].name
+				trackLbl.TextColor3 = Color3.fromRGB(120, 255, 180); trackLbl.Font = Enum.Font.SourceSans; trackLbl.TextSize = 13; trackLbl.Parent = frame
+				frame.Parent = bb; bb.Parent = mainPart
+
+				local prompt = Instance.new("ProximityPrompt")
+				prompt.Name = "RadioPrompt"
+				prompt.ActionText = "切換下一首 ⏭"
+				prompt.ObjectText = "復古收音機"
+				prompt.HoldDuration = 0
+				prompt.MaxActivationDistance = 14
+				prompt.RequiresLineOfSight = false
+				prompt.Parent = mainPart
+
+				local currentIdx = 1
+				bgm.SoundId = PLAYLIST[1].id
+				bgm:Play()
+
+				prompt.Triggered:Connect(function(plr)
+					currentIdx = (currentIdx + 1) % (#PLAYLIST + 1)
+					if currentIdx == 0 then
+						bgm:Stop()
+						trackLbl.Text = "⏸ 已靜音（點擊播放）"
+						trackLbl.TextColor3 = Color3.fromRGB(180, 180, 180)
+						prompt.ActionText = "開啟音樂 🎵"
+					else
+						local track = PLAYLIST[currentIdx]
+						bgm.SoundId = track.id
+						bgm:Play()
+						trackLbl.Text = "🎶 " .. track.name
+						trackLbl.TextColor3 = Color3.fromRGB(120, 255, 180)
+						prompt.ActionText = "切換下一首 ⏭"
+					end
+				end)
+			end
+		end
+
+		-- 擺放憤怒鳥與豬豬（動態算底部對齊 + 全部面朝中央廣場，生動活潑）
+		spawnDecoModel("Chuck the Angry Bird", LOBBY_CENTER.X + 50, floorY, LOBBY_CENTER.Z + 14)
+		spawnDecoModel("Matilda", LOBBY_CENTER.X + 64, floorY, LOBBY_CENTER.Z + 16)
+		spawnDecoModel("Minion Pig", LOBBY_CENTER.X + 62, floorY, LOBBY_CENTER.Z + 5)
+
+		-- 西側萌鳥漫步區
+		spawnDecoModel("Red", LOBBY_CENTER.X - 56, floorY, LOBBY_CENTER.Z + 6)
+		spawnDecoModel("The Blues", LOBBY_CENTER.X - 62, floorY, LOBBY_CENTER.Z + 13)
+		spawnDecoModel("pig bored", LOBBY_CENTER.X - 52, floorY, LOBBY_CENTER.Z + 10)
+		spawnDecoModel("Bomb", LOBBY_CENTER.X - 52, floorY, LOBBY_CENTER.Z - 14)
+
+		-- 南側守護神獸（King Pig 與 Terence 特倫斯巨鳥）
+		spawnDecoModel("King Pig", LOBBY_CENTER.X - 26, daisY, LOBBY_CENTER.Z + 48, 0.85)
+		spawnDecoModel("Terence", LOBBY_CENTER.X + 26, daisY, LOBBY_CENTER.Z + 48, 0.9)
+
+		-- 東北角排行榜展台
+		spawnDecoModel("Leaderboard", LOBBY_CENTER.X + 34, floorY, LOBBY_CENTER.Z - 42)
 	end
+
 
 	island.Parent = workspace
 	return {shopPrompt = shopPrompt, gachaPrompt = gachaPrompt}
@@ -1194,14 +1440,23 @@ clearBots = function()
 end
 
 spawnBot = function(idx: number, spawnPos: Vector3)
-	local botColor = BOT_COLORS[idx] or Color3.fromRGB(60, 180, 255)
+	local BOT_OUTFITS = {
+		{shirt = 398633812, pants = 398633842, hair = "37652735", color = Color3.fromRGB(35, 38, 48)},
+		{shirt = 607785314, pants = 607785368, hair = "62234425", color = Color3.fromRGB(160, 48, 45)},
+		{shirt = 144076358, pants = 144076760, hair = "16630147", color = Color3.fromRGB(45, 95, 165)},
+	}
+	local outfit = BOT_OUTFITS[idx] or BOT_OUTFITS[1]
+
 	local desc = Instance.new("HumanoidDescription")
-	desc.HeadColor = Color3.fromRGB(240, 240, 250)
-	desc.TorsoColor = botColor
-	desc.LeftArmColor = botColor
-	desc.RightArmColor = botColor
-	desc.LeftLegColor = Color3.fromRGB(40, 42, 50)
-	desc.RightLegColor = Color3.fromRGB(40, 42, 50)
+	desc.Shirt = outfit.shirt
+	desc.Pants = outfit.pants
+	desc.HairAccessory = outfit.hair
+	desc.HeadColor = Color3.fromRGB(240, 235, 230)
+	desc.TorsoColor = outfit.color
+	desc.LeftArmColor = Color3.fromRGB(240, 235, 230)
+	desc.RightArmColor = Color3.fromRGB(240, 235, 230)
+	desc.LeftLegColor = Color3.fromRGB(30, 32, 40)
+	desc.RightLegColor = Color3.fromRGB(30, 32, 40)
 
 	local bot = Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
 	bot.Name = BOT_NAMES[idx] or ("[AI] 武者 " .. idx)
@@ -1214,43 +1469,16 @@ spawnBot = function(idx: number, spawnPos: Vector3)
 	end
 	hum.MaxHealth = 100
 	hum.Health = 100
-	hum.WalkSpeed = math.random(15, 19)
+	hum.WalkSpeed = math.random(16, 20)
+	-- 使用 Roblox 原生官方血條，受傷才顯示，無多餘 UI 遮擋
+	hum.DisplayName = bot.Name
+	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+	hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.DisplayWhenDamaged
 
-	local hrp = bot:FindFirstChild("HumanoidRootPart") :: BasePart
-	if not hrp then
-		hrp = bot.PrimaryPart :: BasePart
-	end
+	local hrp = bot:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not hrp then hrp = bot.PrimaryPart :: BasePart end
+
 	bot:PivotTo(CFrame.new(spawnPos + Vector3.new(0, 3, 0)))
-
-	local head = bot:FindFirstChild("Head") or hrp
-	if head then
-		local bb = Instance.new("BillboardGui")
-		bb.Size = UDim2.new(0, 140, 0, 38)
-		bb.StudsOffset = Vector3.new(0, 2.8, 0)
-		bb.AlwaysOnTop = true
-		local nl = Instance.new("TextLabel")
-		nl.Size = UDim2.new(1, 0, 0.5, 0)
-		nl.BackgroundTransparency = 1
-		nl.Text = bot.Name
-		nl.TextColor3 = botColor
-		nl.Font = Enum.Font.SourceSansBold
-		nl.TextScaled = true
-		nl.Parent = bb
-		local hpBg = Instance.new("Frame")
-		hpBg.Size = UDim2.new(1, 0, 0.35, 0)
-		hpBg.Position = UDim2.new(0, 0, 0.55, 0)
-		hpBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-		hpBg.Parent = bb
-		local hpBar = Instance.new("Frame")
-		hpBar.Size = UDim2.new(1, 0, 1, 0)
-		hpBar.BackgroundColor3 = Color3.fromRGB(80, 220, 80)
-		hpBar.Parent = hpBg
-		bb.Parent = head
-
-		hum.HealthChanged:Connect(function(newHp)
-			hpBar.Size = UDim2.new(math.clamp(newHp / hum.MaxHealth, 0, 1), 0, 1, 0)
-		end)
-	end
 
 	local botSkins = {"steel", "thunder", "sakura", "frost", "astra"}
 	local chosenSkin = botSkins[idx] or "steel"
@@ -1268,62 +1496,89 @@ spawnBot = function(idx: number, spawnPos: Vector3)
 		task.delay(1.5, function() if bot.Parent then bot:Destroy() end end)
 	end)
 
+	-- 智慧 AI 決策迴圈（防墜崖約束、近距離精準反彈殺向對手、安全時拾取技能盒子）
 	task.spawn(function()
 		local botSwingCd = 0
+
+		-- 邊界約束：確保 AI 永遠活動在擂台邊界以內，絕不自己走出擂台掉落！
+		local function clampArena(target: Vector3): Vector3
+			local off = target - ARENA_CENTER
+			local flat = Vector3.new(off.X, 0, off.Z)
+			local maxR = ARENA_R - 14
+			if flat.Magnitude > maxR then
+				flat = flat.Unit * maxR
+			end
+			return ARENA_CENTER + Vector3.new(flat.X, 1.5, flat.Z)
+		end
+
 		while bot.Parent and hum.Health > 0 and roundActive do
-			local bPos = hrp.Position
+			local bPos = hrp and hrp.Position or bot:GetPivot().Position
 			if bPos.Y < (ARENA_CENTER.Y - 35) then
 				hum.Health = 0
 				break
 			end
 
-			-- 偵測周圍 24 格內的球並自動揮刀反彈
-			local dangerBall: BasePart? = nil
 			local now = os.clock()
+
+			-- 1. 優先級一：威脅感知——偵測 28 格內飛來的閃避球並揮刀精準反彈！
+			local dangerBall: BasePart? = nil
+			local minBallDist = 28
 			for _, obj in ipairs(workspace:GetChildren()) do
-				if obj:IsA("BasePart") and obj:GetAttribute("KillBall") then
+				if obj:IsA("BasePart") and (obj:GetAttribute("KillBall") or obj:GetAttribute("BallKind")) then
 					local dist = (obj.Position - bPos).Magnitude
-					if dist < 24 then
+					if dist < minBallDist then
+						minBallDist = dist
 						dangerBall = obj
-						break
+					end
+				end
+			end
+
+			-- 尋找最近的存活對手（玩家或不同隊的實體），反彈時把球打向對手！
+			local nearestOpponentPos: Vector3? = nil
+			local minOppDist = 999
+			for p, a in pairs(alive) do
+				if a and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+					local pPos = (p.Character.HumanoidRootPart :: BasePart).Position
+					local d = (pPos - bPos).Magnitude
+					if d < minOppDist then
+						minOppDist = d
+						nearestOpponentPos = pPos
 					end
 				end
 			end
 
 			if dangerBall and now > botSwingCd then
-				botSwingCd = now + 0.60
-				local lookDir = (dangerBall.Position - bPos).Unit
-				hrp.CFrame = CFrame.lookAt(bPos, bPos + Vector3.new(lookDir.X, 0, lookDir.Z))
-				if swordSweepBalls then
-					for _, b in ipairs(workspace:GetChildren()) do
-						if b:IsA("BasePart") and b:GetAttribute("BallKind") then
-							if (b.Position - bPos).Magnitude <= 24 then
-								local t = BALL_BY_ID[b:GetAttribute("BallKind") :: string]
-								if t then
-									reflectBall(nil, b, lookDir, t)
-									ballBurst(b.Position, Color3.fromRGB(255, 200, 50), 2.5)
-									break
-								end
-							end
-						end
-					end
+				botSwingCd = now + 0.55
+				-- 朝向目標：如果有對手就打向對手，否則打向反方向
+				local reflectDir = nearestOpponentPos and (nearestOpponentPos - bPos).Unit or -(dangerBall.Position - bPos).Unit
+				if hrp then
+					hrp.CFrame = CFrame.lookAt(bPos, bPos + Vector3.new(reflectDir.X, 0, reflectDir.Z))
+				end
+				local kind = dangerBall:GetAttribute("BallKind")
+				local t = kind and BALL_BY_ID[kind :: string] or nil
+				if t and reflectBall then
+					reflectBall(nil, dangerBall, reflectDir, t)
+					ballBurst(dangerBall.Position, Color3.fromRGB(255, 215, 60), 2.5)
 				end
 			else
-				-- 追蹤最近的存活玩家並近戰
-				local targetPos: Vector3? = nil
-				local closestDist = 95
-				for p, a in pairs(alive) do
-					if a and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-						local pPos = (p.Character.HumanoidRootPart :: BasePart).Position
-						local d = (pPos - bPos).Magnitude
-						if d < closestDist then
-							closestDist = d
-							targetPos = pPos
+				-- 2. 優先級二：無迫近球時，尋找場上隨機掉落的神秘技能箱（MysteryBox）去撿
+				local closestBox: BasePart? = nil
+				local closestBoxDist = 65
+				for _, obj in ipairs(workspace:GetChildren()) do
+					if obj:IsA("BasePart") and obj.Name == "MysteryBox" and obj:GetAttribute("BoxActive") ~= false then
+						local dist = (obj.Position - bPos).Magnitude
+						if dist < closestBoxDist then
+							closestBoxDist = dist
+							closestBox = obj
 						end
 					end
 				end
 
-				if targetPos and closestDist < 10 and now > botSwingCd then
+				if closestBox and closestBoxDist > 4 and minOppDist > 20 then
+					-- 前往撿技能盒子
+					hum:MoveTo(clampArena(closestBox.Position))
+				elseif nearestOpponentPos and minOppDist < 10 and now > botSwingCd then
+					-- 3. 優先級三：近戰攻擊——在 10 格內砍對手
 					botSwingCd = now + 0.65
 					for p, a in pairs(alive) do
 						if a and p.Character and p.Character:FindFirstChild("Humanoid") then
@@ -1338,108 +1593,173 @@ spawnBot = function(idx: number, spawnPos: Vector3)
 							end
 						end
 					end
-				elseif targetPos then
-					hum:MoveTo(targetPos + Vector3.new(math.random(-5, 5), 0, math.random(-5, 5)))
+				elseif nearestOpponentPos then
+					-- 保持在擂台內向對手周邊周旋移動
+					local approachTarget = nearestOpponentPos + Vector3.new(math.random(-4, 4), 0, math.random(-4, 4))
+					hum:MoveTo(clampArena(approachTarget))
 				else
+					-- 擂台內隨機巡邏
 					local ang = math.random() * math.pi * 2
-					local dist = math.random(5, ARENA_R - 15)
+					local dist = math.random(5, ARENA_R - 20)
 					hum:MoveTo(ARENA_CENTER + Vector3.new(math.cos(ang) * dist, 0, math.sin(ang) * dist))
 				end
 			end
-			task.wait(0.22)
+			task.wait(0.20)
 		end
 	end)
+end
+
+
+
+-- ============================================================
+-- 9 款頂級神兵專屬 3D 幾何模型（每把刀輪廓、結構、特效完全獨一無二，越貴越帥）
+-- ============================================================
+local function buildKnifeParts(parent: Instance, skinId: string, isTool: boolean): BasePart
+	local root = Instance.new("Part")
+	root.Name = isTool and "Handle" or "Root"
+	root.Size = Vector3.new(0.24, 1.2, 0.24)
+	root.Color = Color3.fromRGB(40, 40, 44)
+	root.Material = Enum.Material.Metal
+	root.CanCollide = false
+	root.Anchored = not isTool
+	root.Parent = parent
+
+	local function addPart(name: string, sz: Vector3, cfOffset: CFrame, col: Color3, mat: Enum.Material, shape: Enum.PartType?, trans: number?)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = sz
+		if shape then p.Shape = shape end
+		p.Color = col
+		p.Material = mat
+		p.Transparency = trans or 0
+		p.CanCollide = false
+		p.Anchored = not isTool
+		p.CFrame = root.CFrame * cfOffset
+		p.Parent = parent
+		if isTool then
+			local w = Instance.new("WeldConstraint")
+			w.Part0 = root
+			w.Part1 = p
+			w.Parent = root
+		end
+		return p
+	end
+
+	if skinId == "steel" then
+		-- 精鋼之刃 (T1): 經典戰術刺客匕首 / 短刀
+		addPart("Grip", Vector3.new(0.28, 0.9, 0.28), CFrame.new(0, -0.1, 0), Color3.fromRGB(25, 25, 28), Enum.Material.Rubber)
+		addPart("PommelRing", Vector3.new(0.32, 0.12, 0.32), CFrame.new(0, -0.65, 0), Color3.fromRGB(180, 185, 195), Enum.Material.Metal)
+		addPart("Guard", Vector3.new(0.75, 0.12, 0.26), CFrame.new(0, 0.6, 0), Color3.fromRGB(150, 155, 165), Enum.Material.Metal)
+		addPart("Blade", Vector3.new(0.1, 2.2, 0.44), CFrame.new(0, 1.75, 0), Color3.fromRGB(200, 205, 215), Enum.Material.Metal)
+		addPart("Edge", Vector3.new(0.12, 2.1, 0.08), CFrame.new(0, 1.75, -0.23), Color3.fromRGB(240, 245, 255), Enum.Material.Metal)
+	elseif skinId == "obsidian" then
+		-- 黑曜石刺 (T2): 鋒銳暗黑火山琉璃刺
+		addPart("Grip", Vector3.new(0.3, 0.95, 0.3), CFrame.new(0, -0.1, 0), Color3.fromRGB(22, 18, 28), Enum.Material.Slate)
+		addPart("Pommel", Vector3.new(0.35, 0.2, 0.35), CFrame.new(0, -0.65, 0), Color3.fromRGB(130, 45, 200), Enum.Material.Neon)
+		addPart("GuardL", Vector3.new(0.4, 0.12, 0.22), CFrame.new(-0.35, 0.65, 0) * CFrame.Angles(0, 0, math.rad(-25)), Color3.fromRGB(35, 30, 45), Enum.Material.Glass)
+		addPart("GuardR", Vector3.new(0.4, 0.12, 0.22), CFrame.new(0.35, 0.65, 0) * CFrame.Angles(0, 0, math.rad(25)), Color3.fromRGB(35, 30, 45), Enum.Material.Glass)
+		addPart("Blade", Vector3.new(0.14, 2.5, 0.42), CFrame.new(0, 1.9, 0), Color3.fromRGB(35, 28, 50), Enum.Material.Glass, nil, 0.15)
+		addPart("RuneSpine", Vector3.new(0.16, 2.3, 0.12), CFrame.new(0, 1.9, 0), Color3.fromRGB(170, 60, 255), Enum.Material.Neon)
+	elseif skinId == "thunder" then
+		-- 雷霆之薙 (T3): 鋸齒閃電彎刀 / 電磁叉護手
+		addPart("Grip", Vector3.new(0.26, 1.0, 0.26), CFrame.new(0, -0.1, 0), Color3.fromRGB(20, 30, 50), Enum.Material.Fabric)
+		addPart("PommelBolt", Vector3.new(0.35, 0.3, 0.2), CFrame.new(0, -0.7, 0), Color3.fromRGB(255, 215, 60), Enum.Material.Neon)
+		addPart("GuardL", Vector3.new(0.5, 0.14, 0.24), CFrame.new(-0.4, 0.65, 0) * CFrame.Angles(0, 0, math.rad(-35)), Color3.fromRGB(90, 170, 255), Enum.Material.Neon)
+		addPart("GuardR", Vector3.new(0.5, 0.14, 0.24), CFrame.new(0.4, 0.65, 0) * CFrame.Angles(0, 0, math.rad(35)), Color3.fromRGB(90, 170, 255), Enum.Material.Neon)
+		addPart("BladeSeg1", Vector3.new(0.12, 1.0, 0.5), CFrame.new(0, 1.15, 0), Color3.fromRGB(90, 170, 255), Enum.Material.Neon)
+		addPart("BladeSeg2", Vector3.new(0.12, 1.0, 0.44), CFrame.new(0.1, 2.05, 0) * CFrame.Angles(0, 0, math.rad(-10)), Color3.fromRGB(130, 205, 255), Enum.Material.Neon)
+		addPart("BladeSeg3", Vector3.new(0.12, 0.9, 0.36), CFrame.new(-0.05, 2.9, 0) * CFrame.Angles(0, 0, math.rad(12)), Color3.fromRGB(200, 240, 255), Enum.Material.Neon)
+	elseif skinId == "sakura" then
+		-- 櫻花武士刀 (T4): 正統和風野太刀 / 金色櫻花刀鐔
+		addPart("Grip", Vector3.new(0.24, 1.3, 0.24), CFrame.new(0, -0.15, 0), Color3.fromRGB(240, 235, 235), Enum.Material.SmoothPlastic)
+		addPart("ItoWrap", Vector3.new(0.26, 1.1, 0.26), CFrame.new(0, -0.15, 0), Color3.fromRGB(180, 50, 90), Enum.Material.Fabric)
+		addPart("PommelCap", Vector3.new(0.3, 0.15, 0.3), CFrame.new(0, -0.75, 0), Color3.fromRGB(240, 195, 70), Enum.Material.Metal)
+		addPart("Tsuba", Vector3.new(0.12, 0.78, 0.78), CFrame.new(0, 0.62, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(240, 195, 70), Enum.Material.Metal, Enum.PartType.Cylinder)
+		addPart("Blade", Vector3.new(0.08, 3.1, 0.36), CFrame.new(0, 2.2, 0), Color3.fromRGB(255, 185, 215), Enum.Material.SmoothPlastic)
+		addPart("Hamon", Vector3.new(0.1, 3.0, 0.1), CFrame.new(0, 2.2, -0.16), Color3.fromRGB(255, 230, 240), Enum.Material.Neon)
+	elseif skinId == "frost" then
+		-- 霜之哀傷 (T4): 冰晶重劍 / 惡魔冰角護手與兩側突刺
+		addPart("Grip", Vector3.new(0.28, 1.2, 0.28), CFrame.new(0, -0.1, 0), Color3.fromRGB(30, 45, 60), Enum.Material.Metal)
+		addPart("PommelIce", Vector3.new(0.4, 0.28, 0.4), CFrame.new(0, -0.75, 0), Color3.fromRGB(160, 230, 255), Enum.Material.Ice)
+		addPart("GuardHoriz", Vector3.new(1.3, 0.2, 0.38), CFrame.new(0, 0.62, 0), Color3.fromRGB(60, 95, 130), Enum.Material.Metal)
+		addPart("GuardHornL", Vector3.new(0.2, 0.5, 0.2), CFrame.new(-0.6, 0.85, 0) * CFrame.Angles(0, 0, math.rad(30)), Color3.fromRGB(160, 230, 255), Enum.Material.Ice)
+		addPart("GuardHornR", Vector3.new(0.2, 0.5, 0.2), CFrame.new(0.6, 0.85, 0) * CFrame.Angles(0, 0, math.rad(-30)), Color3.fromRGB(160, 230, 255), Enum.Material.Ice)
+		addPart("BladeMain", Vector3.new(0.14, 3.2, 0.68), CFrame.new(0, 2.25, 0), Color3.fromRGB(170, 235, 255), Enum.Material.Ice, nil, 0.1)
+		addPart("Spike1L", Vector3.new(0.35, 0.16, 0.12), CFrame.new(-0.45, 1.8, 0) * CFrame.Angles(0, 0, math.rad(35)), Color3.fromRGB(200, 245, 255), Enum.Material.Neon)
+		addPart("Spike1R", Vector3.new(0.35, 0.16, 0.12), CFrame.new(0.45, 1.8, 0) * CFrame.Angles(0, 0, math.rad(-35)), Color3.fromRGB(200, 245, 255), Enum.Material.Neon)
+		addPart("Spike2L", Vector3.new(0.3, 0.14, 0.12), CFrame.new(-0.42, 2.6, 0) * CFrame.Angles(0, 0, math.rad(35)), Color3.fromRGB(200, 245, 255), Enum.Material.Neon)
+		addPart("Spike2R", Vector3.new(0.3, 0.14, 0.12), CFrame.new(0.42, 2.6, 0) * CFrame.Angles(0, 0, math.rad(-35)), Color3.fromRGB(200, 245, 255), Enum.Material.Neon)
+	elseif skinId == "astra" then
+		-- 星軌重刃 (T5): 未來星界斬艦刀 / 環形星盤與分叉雙刃頭
+		addPart("Grip", Vector3.new(0.26, 1.3, 0.26), CFrame.new(0, -0.15, 0), Color3.fromRGB(25, 35, 35), Enum.Material.Metal)
+		addPart("PommelCore", Vector3.new(0.38, 0.38, 0.38), CFrame.new(0, -0.85, 0), Color3.fromRGB(120, 255, 180), Enum.Material.Neon)
+		addPart("AstroRing1", Vector3.new(0.12, 1.1, 1.1), CFrame.new(0, 0.65, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(120, 255, 180), Enum.Material.Neon, Enum.PartType.Cylinder, 0.3)
+		addPart("AstroRing2", Vector3.new(0.1, 0.8, 0.8), CFrame.new(0, 0.65, 0) * CFrame.Angles(math.rad(45), 0, math.rad(90)), Color3.fromRGB(200, 255, 230), Enum.Material.Neon, Enum.PartType.Cylinder, 0.4)
+		addPart("CleaverBody", Vector3.new(0.16, 3.4, 0.84), CFrame.new(0, 2.4, 0), Color3.fromRGB(35, 45, 50), Enum.Material.Metal)
+		addPart("CleaverEdge", Vector3.new(0.18, 3.4, 0.15), CFrame.new(0, 2.4, -0.45), Color3.fromRGB(120, 255, 180), Enum.Material.Neon)
+		addPart("SplitTipL", Vector3.new(0.16, 0.6, 0.35), CFrame.new(0, 4.2, -0.25) * CFrame.Angles(0, 0, math.rad(-15)), Color3.fromRGB(120, 255, 180), Enum.Material.Neon)
+		addPart("SplitTipR", Vector3.new(0.16, 0.6, 0.35), CFrame.new(0, 4.2, 0.25) * CFrame.Angles(0, 0, math.rad(15)), Color3.fromRGB(120, 255, 180), Enum.Material.Neon)
+	elseif skinId == "hydra" then
+		-- 九頭蛇牙鐮 (T5): 劇毒三刃戰鐮 / 蛇鱗長柄
+		addPart("Grip", Vector3.new(0.24, 1.8, 0.24), CFrame.new(0, -0.3, 0), Color3.fromRGB(30, 45, 30), Enum.Material.Slate)
+		addPart("SnakePommel", Vector3.new(0.36, 0.4, 0.36), CFrame.new(0, -1.25, 0), Color3.fromRGB(100, 220, 80), Enum.Material.Neon)
+		addPart("ShaftTop", Vector3.new(0.3, 0.5, 0.3), CFrame.new(0, 0.75, 0), Color3.fromRGB(50, 75, 50), Enum.Material.Metal)
+		addPart("ScytheBlade1", Vector3.new(0.14, 0.5, 1.2), CFrame.new(0, 0.95, -0.6) * CFrame.Angles(math.rad(25), 0, 0), Color3.fromRGB(100, 220, 80), Enum.Material.Neon)
+		addPart("ScytheBlade2", Vector3.new(0.14, 0.45, 1.6), CFrame.new(0, 1.3, -1.5) * CFrame.Angles(math.rad(55), 0, 0), Color3.fromRGB(130, 255, 110), Enum.Material.Neon)
+		addPart("ScytheTip", Vector3.new(0.14, 0.35, 1.0), CFrame.new(0, 1.35, -2.5) * CFrame.Angles(math.rad(95), 0, 0), Color3.fromRGB(180, 255, 150), Enum.Material.Neon)
+		addPart("SubFang1", Vector3.new(0.12, 0.3, 0.6), CFrame.new(0, 0.7, 0.35) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(100, 220, 80), Enum.Material.Neon)
+		addPart("SubFang2", Vector3.new(0.12, 0.25, 0.5), CFrame.new(0, 0.5, 0.75) * CFrame.Angles(math.rad(-65), 0, 0), Color3.fromRGB(130, 255, 110), Enum.Material.Neon)
+	elseif skinId == "blueflame" then
+		-- 青焰冥皇劍 (T6): 皇家雙手巨劍 / 波狀焰刃與龍翼展翅
+		addPart("Grip", Vector3.new(0.28, 1.6, 0.28), CFrame.new(0, -0.2, 0), Color3.fromRGB(20, 25, 40), Enum.Material.Fabric)
+		addPart("PommelRoyal", Vector3.new(0.42, 0.3, 0.42), CFrame.new(0, -1.05, 0), Color3.fromRGB(240, 200, 60), Enum.Material.Metal)
+		addPart("GuardCenter", Vector3.new(0.5, 0.25, 0.4), CFrame.new(0, 0.65, 0), Color3.fromRGB(240, 200, 60), Enum.Material.Metal)
+		addPart("WingL", Vector3.new(0.7, 0.2, 0.25), CFrame.new(-0.55, 0.75, 0) * CFrame.Angles(0, 0, math.rad(-25)), Color3.fromRGB(60, 160, 255), Enum.Material.Neon)
+		addPart("WingR", Vector3.new(0.7, 0.2, 0.25), CFrame.new(0.55, 0.75, 0) * CFrame.Angles(0, 0, math.rad(25)), Color3.fromRGB(60, 160, 255), Enum.Material.Neon)
+		addPart("Flamberge1", Vector3.new(0.16, 1.3, 0.7), CFrame.new(0.08, 1.35, 0) * CFrame.Angles(0, 0, math.rad(-6)), Color3.fromRGB(60, 160, 255), Enum.Material.Neon)
+		addPart("Flamberge2", Vector3.new(0.16, 1.3, 0.65), CFrame.new(-0.08, 2.5, 0) * CFrame.Angles(0, 0, math.rad(7)), Color3.fromRGB(90, 185, 255), Enum.Material.Neon)
+		addPart("Flamberge3", Vector3.new(0.16, 1.2, 0.5), CFrame.new(0.05, 3.65, 0) * CFrame.Angles(0, 0, math.rad(-5)), Color3.fromRGB(150, 215, 255), Enum.Material.Neon)
+	elseif skinId == "phoenix" then
+		-- 鳳凰神滅神刀 (T6): 滅世涅槃神刃 / 鳳羽翼鍔與熾陽光環
+		addPart("Grip", Vector3.new(0.28, 1.6, 0.28), CFrame.new(0, -0.2, 0), Color3.fromRGB(45, 18, 12), Enum.Material.Wood)
+		addPart("SunHaloPommel", Vector3.new(0.12, 0.7, 0.7), CFrame.new(0, -1.05, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(255, 190, 40), Enum.Material.Neon, Enum.PartType.Cylinder)
+		addPart("GuardCore", Vector3.new(0.6, 0.3, 0.4), CFrame.new(0, 0.65, 0), Color3.fromRGB(255, 190, 40), Enum.Material.Metal)
+		addPart("PhoenixWingL1", Vector3.new(0.8, 0.2, 0.25), CFrame.new(-0.65, 0.8, 0) * CFrame.Angles(0, 0, math.rad(-30)), Color3.fromRGB(255, 100, 30), Enum.Material.Neon)
+		addPart("PhoenixWingR1", Vector3.new(0.8, 0.2, 0.25), CFrame.new(0.65, 0.8, 0) * CFrame.Angles(0, 0, math.rad(30)), Color3.fromRGB(255, 100, 30), Enum.Material.Neon)
+		addPart("PhoenixWingL2", Vector3.new(0.5, 0.15, 0.2), CFrame.new(-1.15, 1.1, 0) * CFrame.Angles(0, 0, math.rad(-50)), Color3.fromRGB(255, 190, 40), Enum.Material.Neon)
+		addPart("PhoenixWingR2", Vector3.new(0.5, 0.15, 0.2), CFrame.new(1.15, 1.1, 0) * CFrame.Angles(0, 0, math.rad(50)), Color3.fromRGB(255, 190, 40), Enum.Material.Neon)
+		addPart("SunBladeMain", Vector3.new(0.14, 3.8, 0.65), CFrame.new(0, 2.6, 0), Color3.fromRGB(255, 120, 30), Enum.Material.Neon)
+		addPart("SunEdge", Vector3.new(0.16, 3.7, 0.14), CFrame.new(0, 2.6, -0.35), Color3.fromRGB(255, 230, 90), Enum.Material.Neon)
+		addPart("DragonRidge1", Vector3.new(0.15, 0.5, 0.2), CFrame.new(0, 1.8, 0.38) * CFrame.Angles(math.rad(-25), 0, 0), Color3.fromRGB(255, 190, 40), Enum.Material.Metal)
+		addPart("DragonRidge2", Vector3.new(0.15, 0.5, 0.2), CFrame.new(0, 2.6, 0.38) * CFrame.Angles(math.rad(-25), 0, 0), Color3.fromRGB(255, 190, 40), Enum.Material.Metal)
+		addPart("DragonRidge3", Vector3.new(0.15, 0.5, 0.2), CFrame.new(0, 3.4, 0.38) * CFrame.Angles(math.rad(-25), 0, 0), Color3.fromRGB(255, 190, 40), Enum.Material.Metal)
+	end
+
+	if isTool then
+		parent.PrimaryPart = root
+	elseif parent:IsA("Model") then
+		parent.PrimaryPart = root
+	end
+	return root
 end
 
 makeKnifeTool = function(skinId: string): Tool
 	local skin = KNIFE_BY_ID[skinId] or KNIVES[1]
 	local tier = skin.tier or 1
 	local tool = Instance.new("Tool")
-	tool.Name = skin.name .. "之刀"
-	tool.ToolTip = "左鍵／F 揮刀：砍人 5 下倒，也能把球砍碎或反彈"
+	tool.Name = skin.name .. "之刃"
+	tool.ToolTip = "點擊 / F 揮刀：砍人掉血，亦可反彈或砍碎閃避球"
 	tool.CanBeDropped = false
 	tool.RequiresHandle = true
-	-- 把皮膚資訊帶給客戶端（揮刀特效用）
 	tool:SetAttribute("Skin", skin.id)
 	tool:SetAttribute("Tier", tier)
 	tool:SetAttribute("BladeColor", skin.color)
 
-	local handle = Instance.new("Part")
-	handle.Name = "Handle"
-	handle.Size = Vector3.new(0.34, 2.2, 0.34)
-	handle.Color = Color3.fromRGB(62, 62, 68)
-	handle.Material = Enum.Material.Metal
-	handle.CanCollide = false
-
-	local function weldBits(a: BasePart, b: BasePart)
-		local w = Instance.new("WeldConstraint")
-		w.Part0 = a
-		w.Part1 = b
-		w.Parent = a
-	end
-
-	-- 握把（黑）
-	local grip = Instance.new("Part")
-	grip.Name = "GripDeco"
-	grip.Size = Vector3.new(0.42, 1.1, 0.42)
-	grip.Color = Color3.fromRGB(30, 30, 32)
-	grip.Material = Enum.Material.Rubber
-	grip.CanCollide = false
-	grip.CFrame = handle.CFrame * CFrame.new(0, -0.75, 0)
-	weldBits(handle, grip)
-	grip.Parent = tool
-
-	-- 刀身：越貴越長越亮
-	local bladeLen = 2.3 + tier * 0.22
-	local blade = Instance.new("Part")
-	blade.Name = "Blade"
-	blade.Size = Vector3.new(0.12, bladeLen, 0.6 + tier * 0.05)
-	blade.Color = skin.color
-	blade.Material = (tier >= 4) and Enum.Material.Neon or Enum.Material.Metal
-	blade.CanCollide = false
-	blade.CFrame = handle.CFrame * CFrame.new(0, 1.0 + bladeLen / 2, 0)
-	weldBits(handle, blade)
-	blade.Parent = tool
-
-	-- 刃口白光（tier 3 起）
-	if tier >= 3 then
-		local edge = Instance.new("Part")
-		edge.Name = "Edge"
-		edge.Size = Vector3.new(0.17, bladeLen * 0.94, 0.09)
-		edge.Color = Color3.new(1, 1, 1):Lerp(skin.color, 0.35)
-		edge.Material = Enum.Material.Neon
-		edge.CanCollide = false
-		edge.CFrame = blade.CFrame * CFrame.new(0, 0, -(blade.Size.Z / 2))
-		weldBits(blade, edge)
-		edge.Parent = tool
-	end
-
-	-- 護手（tier 2 起）
-	if tier >= 2 then
-		local guard = Instance.new("Part")
-		guard.Name = "Guard"
-		guard.Size = Vector3.new(0.86 + tier * 0.03, 0.15, 0.34)
-		guard.Color = skin.color
-		guard.Material = Enum.Material.Metal
-		guard.CanCollide = false
-		guard.CFrame = handle.CFrame * CFrame.new(0, 1.0, 0)
-		weldBits(handle, guard)
-		guard.Parent = tool
-	end
-
-	-- 高階刀自體發光
-	if tier >= 6 then
-		local light = Instance.new("PointLight")
-		light.Color = skin.color
-		light.Brightness = 1.5
-		light.Range = 9
-		light.Parent = blade
-	end
-
-	handle.Parent = tool
+	local handle = buildKnifeParts(tool, skin.id, true)
 	tool.Grip = CFrame.new(0, 0.78, 0) * CFrame.Angles(math.rad(-8), 0, math.rad(-10))
 	return tool
 end
+
 
 local swingCd: {[Player]: number} = {}
 
@@ -2630,7 +2950,7 @@ local function teleportToArena(plr: Player, i: number)
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if hrp and hum and hum.Health > 0 then
 		local ang = math.rad(i * (360 / math.max(playerCount(), 1)))
-		local pos = ARENA_CENTER + Vector3.new(math.cos(ang) * (ARENA_R - 12), 5, math.sin(ang) * (ARENA_R - 12))
+		local pos = ARENA_CENTER + Vector3.new(math.cos(ang) * 35, 4, math.sin(ang) * 35)
 		char:PivotTo(CFrame.new(pos))
 		hum.WalkSpeed = 16
 	end
@@ -2761,20 +3081,39 @@ local function startRound()
 		local initialTotal = startCount + math.max(4 - startCount, 0)
 		local timeUp = elapsed >= ROUND_TIME_MAX
 		if (n == 0) or (totalAlive <= 1 and initialTotal > 1) or timeUp then
-			-- 回合結束
-			if n >= 1 then
-				-- 有存活玩家（擊敗所有 AI 武者或撐過時間）→ 拿勝利獎勵
-				for winner in pairs(alive) do
-					if alive[winner] and winner.Parent then
-						local d = pd(winner)
-						d.coins += COIN_WIN
-						syncLeader(winner)
-						send(winner, "coins", d.coins)
-						broadcast("winner", winner.DisplayName .. " 獲勝！ +" .. COIN_WIN)
+			-- 回合結束：判定唯一的最終大贏家！
+			local winnerPlr: Player? = nil
+			if n == 1 then
+				for p, a in pairs(alive) do
+					if a and p.Parent then
+						winnerPlr = p
+						break
 					end
 				end
+			elseif n > 1 and timeUp then
+				-- 超時則選取血量最多的存活玩家為唯一贏家
+				local bestHp = -1
+				for p, a in pairs(alive) do
+					if a and p.Character and p.Character:FindFirstChild("Humanoid") then
+						local hp = (p.Character.Humanoid :: Humanoid).Health
+						if hp > bestHp then
+							bestHp = hp
+							winnerPlr = p
+						end
+					end
+				end
+			end
+
+			if winnerPlr then
+				local d = pd(winnerPlr)
+				d.coins += COIN_WIN
+				syncLeader(winnerPlr)
+				send(winnerPlr, "coins", d.coins)
+				broadcast("winner", "👑 " .. winnerPlr.DisplayName .. " 勇奪本局唯一總冠軍！ (+" .. COIN_WIN .. " 金幣)")
+			elseif totalAlive == 1 and botCount == 1 then
+				broadcast("winner", "⚔️ AI 頂級武者技高一籌，奪得本局冠軍！")
 			else
-				broadcast("winner", "無人存活…")
+				broadcast("winner", "無人存活…本回合平局")
 			end
 			roundActive = false
 		else
@@ -2782,7 +3121,8 @@ local function startRound()
 		end
 	end
 
-	task.wait(3.5)
+	-- 贏家誕生後迅速 (1.4 秒) 直接將全體玩家傳送回典雅豪氣大廳，絕不在戰鬥地圖逗留！
+	task.wait(1.4)
 	for _, plr in ipairs(Players:GetPlayers()) do
 		inRound[plr] = false
 		alive[plr] = false
