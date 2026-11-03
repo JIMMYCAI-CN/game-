@@ -439,6 +439,15 @@ local function playSwing(skinId)
 	animateGrip(char, dir)
 	addShake(theme.shake * 0.55, 0.13)
 	punchIn(-0.35)
+
+	-- 揮刀破空音效
+	local whoosh = Instance.new("Sound")
+	whoosh.SoundId = "rbxasset://sounds/swordslash.wav"
+	whoosh.Volume = 0.95
+	whoosh.PlaybackSpeed = 0.95 + rng:NextNumber() * 0.25
+	whoosh.Parent = hrp
+	whoosh:Play()
+	game:GetService("Debris"):AddItem(whoosh, 1.2)
 end
 
 -- 刀身拖尾（裝備時掛上）
@@ -537,6 +546,23 @@ end)
 -- 球命中反饋
 -- ------------------------------------------------------------
 local function ballImpact(pos, theme, kind, coin, ballName)
+	-- 金屬撞擊與清脆彈反打擊音效
+	local hitSnd = Instance.new("Sound")
+	hitSnd.SoundId = "rbxasset://sounds/swordhit.wav"
+	hitSnd.Volume = 1.35
+	hitSnd.PlaybackSpeed = 1.02 + rng:NextNumber() * 0.16
+	hitSnd.Parent = workspace.CurrentCamera
+	hitSnd:Play()
+	game:GetService("Debris"):AddItem(hitSnd, 1.5)
+
+	local clinkSnd = Instance.new("Sound")
+	clinkSnd.SoundId = "rbxassetid://9114223171"
+	clinkSnd.Volume = 0.9
+	clinkSnd.PlaybackSpeed = 1.15
+	clinkSnd.Parent = workspace.CurrentCamera
+	clinkSnd:Play()
+	game:GetService("Debris"):AddItem(clinkSnd, 1.5)
+
 	if kind == "destroy" then
 		ringWave(pos, theme.color, 3.4, 0.34)
 		ringWave(pos, Color3.new(1, 1, 1), 1.9, 0.22)
@@ -588,5 +614,22 @@ Net.OnClientEvent:Connect(function(msg)
 			skin = tool and skinOfTool(tool) or "steel"
 		end
 		ballImpact(pos, themeOf(skin), d.kind, d.coin, d.name)
+	elseif msg.act == "hitsuccess" then
+		local d = msg.data or {}
+		addShake(0.65, 0.18)
+		punchIn(0.85)
+		local hitSnd = Instance.new("Sound")
+		hitSnd.SoundId = "rbxasset://sounds/swordhit.wav"
+		hitSnd.Volume = 1.2
+		hitSnd.PlaybackSpeed = 1.1
+		hitSnd.Parent = workspace.CurrentCamera
+		hitSnd:Play()
+		game:GetService("Debris"):AddItem(hitSnd, 1.2)
+		hitText("⚔ 命中 " .. tostring(d.victim or "敵人") .. " -" .. tostring(d.dmg or 25), Color3.fromRGB(255, 200, 60))
+	elseif msg.act == "hurt" then
+		local d = msg.data or {}
+		addShake(0.85, 0.22)
+		screenFlash(Color3.fromRGB(255, 45, 45), 0.35, 0.22)
+		hitText("💔 受傷 -" .. tostring(d.dmg or 25) .. (d.attacker and (" (" .. d.attacker .. ")") or ""), Color3.fromRGB(255, 80, 80))
 	end
 end)

@@ -231,47 +231,59 @@ UserInputService.InputBegan:Connect(function(input, processed)
 end)
 
 -- ------------------------------------------------------------
--- 軍械庫商店
+-- 軍械庫商店（現代化雙欄 3D 實體模型預覽與真實戰鬥數值）
 -- ------------------------------------------------------------
 local shopFrame = Instance.new("Frame")
-shopFrame.Size = UDim2.new(0, 560, 0, 420)
-shopFrame.Position = UDim2.new(0.5, -280, 0.5, -210)
-shopFrame.BackgroundColor3 = Color3.fromRGB(30, 25, 22)
-shopFrame.BackgroundTransparency = 0.06
+shopFrame.Size = UDim2.new(0, 760, 0, 480)
+shopFrame.Position = UDim2.new(0.5, -380, 0.5, -240)
+shopFrame.BackgroundColor3 = Color3.fromRGB(24, 26, 32)
+shopFrame.BackgroundTransparency = 0.05
 shopFrame.Visible = false
 shopFrame.ZIndex = 20
 styleRound(shopFrame :: any, 14)
 shopFrame.Parent = gui
 
 local shopTitle = Instance.new("TextLabel")
-shopTitle.Size = UDim2.new(1, 0, 0, 44)
+shopTitle.Size = UDim2.new(0, 260, 0, 36)
+shopTitle.Position = UDim2.new(0, 20, 0, 10)
 shopTitle.BackgroundTransparency = 1
-shopTitle.TextColor3 = Color3.fromRGB(255, 215, 90)
+shopTitle.TextColor3 = Color3.fromRGB(255, 220, 110)
 shopTitle.TextScaled = true
-shopTitle.Font = Enum.Font.SourceSansBold
-shopTitle.Text = "⚔ 軍械庫"
+shopTitle.Font = Enum.Font.GothamBold
+shopTitle.Text = "⚔️ 武器軍械庫"
 shopTitle.ZIndex = 21
 shopTitle.Parent = shopFrame
 
+local shopSub = Instance.new("TextLabel")
+shopSub.Size = UDim2.new(0, 300, 0, 20)
+shopSub.Position = UDim2.new(0, 22, 0, 44)
+shopSub.BackgroundTransparency = 1
+shopSub.TextColor3 = Color3.fromRGB(160, 165, 178)
+shopSub.TextSize = 13
+shopSub.Font = Enum.Font.SourceSans
+shopSub.Text = "裝備神兵利器 · 提升揮刀判定與對決傷害"
+shopSub.ZIndex = 21
+shopSub.Parent = shopFrame
+
 local shopCoins = Instance.new("TextLabel")
-shopCoins.Size = UDim2.new(0, 160, 0, 30)
-shopCoins.Position = UDim2.new(1, -170, 0, 6)
+shopCoins.Size = UDim2.new(0, 180, 0, 32)
+shopCoins.Position = UDim2.new(1, -250, 0, 14)
 shopCoins.BackgroundTransparency = 1
 shopCoins.TextColor3 = Color3.fromRGB(255, 215, 90)
-shopCoins.TextScaled = true
-shopCoins.Font = Enum.Font.SourceSansBold
-shopCoins.Text = "¥ 0"
+shopCoins.TextSize = 22
+shopCoins.Font = Enum.Font.GothamBold
+shopCoins.Text = "💰 ¥ 0"
 shopCoins.ZIndex = 21
 shopCoins.Parent = shopFrame
 
 local shopClose = Instance.new("TextButton")
-shopClose.Size = UDim2.new(0, 40, 0, 40)
-shopClose.Position = UDim2.new(1, -50, 0, 46)
-shopClose.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+shopClose.Size = UDim2.new(0, 36, 0, 36)
+shopClose.Position = UDim2.new(1, -50, 0, 12)
+shopClose.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
 shopClose.TextColor3 = Color3.new(1, 1, 1)
-shopClose.TextScaled = true
-shopClose.Font = Enum.Font.SourceSansBold
-shopClose.Text = "X"
+shopClose.TextSize = 20
+shopClose.Font = Enum.Font.GothamBold
+shopClose.Text = "✕"
 shopClose.ZIndex = 21
 styleRound(shopClose :: any, 8)
 shopClose.Parent = shopFrame
@@ -279,119 +291,368 @@ shopClose.Activated:Connect(function()
 	shopFrame.Visible = false
 end)
 
--- 格子容器
-local shopGrid = Instance.new("Frame")
-shopGrid.Size = UDim2.new(1, -24, 1, -120)
-shopGrid.Position = UDim2.new(0, 12, 0, 54)
-shopGrid.BackgroundTransparency = 1
-shopGrid.ZIndex = 20
-local gridLayout = Instance.new("UIGridLayout")
-gridLayout.CellSize = UDim2.new(0, 165, 0, 105)
-gridLayout.CellPadding = UDim2.new(0, 8, 0, 8)
-gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
-gridLayout.Parent = shopGrid
-shopGrid.Parent = shopFrame
+-- 左側武器卡片滾動列表
+local listScroll = Instance.new("ScrollingFrame")
+listScroll.Size = UDim2.new(0, 320, 1, -78)
+listScroll.Position = UDim2.new(0, 16, 0, 68)
+listScroll.BackgroundColor3 = Color3.fromRGB(18, 20, 25)
+listScroll.BackgroundTransparency = 0.5
+listScroll.BorderSizePixel = 0
+listScroll.ScrollBarThickness = 6
+listScroll.ScrollBarImageColor3 = Color3.fromRGB(80, 85, 100)
+listScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+listScroll.ZIndex = 21
+styleRound(listScroll :: any, 10)
+listScroll.Parent = shopFrame
 
-local shopCells: {[string]: TextButton} = {}
+local listLayout = Instance.new("UIListLayout")
+listLayout.Padding = UDim.new(0, 8)
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Parent = listScroll
+
+-- 右側 3D 預覽與屬性詳情面板
+local detailPanel = Instance.new("Frame")
+detailPanel.Size = UDim2.new(1, -370, 1, -78)
+detailPanel.Position = UDim2.new(0, 352, 0, 68)
+detailPanel.BackgroundColor3 = Color3.fromRGB(18, 20, 25)
+detailPanel.BackgroundTransparency = 0.5
+detailPanel.ZIndex = 21
+styleRound(detailPanel :: any, 10)
+detailPanel.Parent = shopFrame
+
+-- 3D 視窗
+local vp = Instance.new("ViewportFrame")
+vp.Size = UDim2.new(1, -20, 0, 175)
+vp.Position = UDim2.new(0, 10, 0, 10)
+vp.BackgroundColor3 = Color3.fromRGB(12, 13, 17)
+vp.BackgroundTransparency = 0.3
+vp.BorderSizePixel = 0
+vp.ZIndex = 22
+styleRound(vp :: any, 8)
+vp.Parent = detailPanel
+
+local vpCam = Instance.new("Camera")
+vpCam.FieldOfView = 50
+vp.CurrentCamera = vpCam
+vpCam.Parent = vp
+
+-- 詳情文字
+local detName = Instance.new("TextLabel")
+detName.Size = UDim2.new(1, -20, 0, 30)
+detName.Position = UDim2.new(0, 10, 0, 192)
+detName.BackgroundTransparency = 1
+detName.TextColor3 = Color3.fromRGB(255, 230, 120)
+detName.TextSize = 22
+detName.Font = Enum.Font.GothamBold
+detName.TextXAlignment = Enum.TextXAlignment.Left
+detName.ZIndex = 22
+detName.Parent = detailPanel
+
+local detStats = Instance.new("TextLabel")
+detStats.Size = UDim2.new(1, -20, 0, 68)
+detStats.Position = UDim2.new(0, 10, 0, 224)
+detStats.BackgroundTransparency = 1
+detStats.TextColor3 = Color3.fromRGB(220, 225, 235)
+detStats.TextSize = 14
+detStats.Font = Enum.Font.SourceSans
+detStats.TextXAlignment = Enum.TextXAlignment.Left
+detStats.TextYAlignment = Enum.TextYAlignment.Top
+detStats.TextWrapped = true
+detStats.ZIndex = 22
+detStats.Parent = detailPanel
+
+local detDesc = Instance.new("TextLabel")
+detDesc.Size = UDim2.new(1, -20, 0, 40)
+detDesc.Position = UDim2.new(0, 10, 0, 294)
+detDesc.BackgroundTransparency = 1
+detDesc.TextColor3 = Color3.fromRGB(180, 205, 240)
+detDesc.TextSize = 13
+detDesc.Font = Enum.Font.SourceSansItalic
+detDesc.TextXAlignment = Enum.TextXAlignment.Left
+detDesc.TextYAlignment = Enum.TextYAlignment.Top
+detDesc.TextWrapped = true
+detDesc.ZIndex = 22
+detDesc.Parent = detailPanel
+
+-- 底部操作按鈕
+local actionBtn = Instance.new("TextButton")
+actionBtn.Size = UDim2.new(1, -20, 0, 44)
+actionBtn.Position = UDim2.new(0, 10, 1, -54)
+actionBtn.BackgroundColor3 = Color3.fromRGB(60, 160, 80)
+actionBtn.TextColor3 = Color3.new(1, 1, 1)
+actionBtn.TextSize = 18
+actionBtn.Font = Enum.Font.GothamBold
+actionBtn.ZIndex = 22
+styleRound(actionBtn :: any, 8)
+actionBtn.Parent = detailPanel
+
+-- 內部狀態
+local shopCells: {[string]: Frame} = {}
 local knifeList: {{[string]: any}} = {}
 local shopState = {coins = 0, owned = {}, equipped = "steel"}
+local selectedKnifeId = "steel"
+local previewModel: Model? = nil
 
-local function refreshShop()
-	shopCoins.Text = "¥ " .. shopState.coins
-	for _, k in ipairs(knifeList) do
-		local cell = shopCells[k.id]
-		if cell then
-			local nm = cell:FindFirstChild("KN") :: TextLabel?
-			local pr = cell:FindFirstChild("PR") :: TextLabel?
-			if nm and pr then
-				if shopState.owned[k.id] then
-					if shopState.equipped == k.id then
-						pr.Text = "✓ 已裝備"
-						pr.TextColor3 = Color3.fromRGB(120, 255, 140)
-						cell.BackgroundColor3 = Color3.fromRGB(50, 90, 50)
-					else
-						pr.Text = "點擊裝備"
-						pr.TextColor3 = Color3.fromRGB(230, 230, 230)
-						cell.BackgroundColor3 = Color3.fromRGB(55, 55, 45)
-					end
-				else
-					pr.Text = "¥ " .. k.price
-					pr.TextColor3 = (shopState.coins >= k.price) and Color3.fromRGB(255, 215, 90) or Color3.fromRGB(255, 110, 110)
-					cell.BackgroundColor3 = Color3.fromRGB(60, 45, 35)
-				end
-			end
+local TIER_NAMES = {"[T1 基礎]", "[T2 堅毅]", "[T3 精銳]", "[T4 史詩]", "[T5 傳說]", "[T6 神話]"}
+local TIER_COLORS = {
+	Color3.fromRGB(180, 185, 195),
+	Color3.fromRGB(100, 180, 255),
+	Color3.fromRGB(160, 110, 255),
+	Color3.fromRGB(255, 120, 200),
+	Color3.fromRGB(255, 180, 60),
+	Color3.fromRGB(255, 60, 60),
+}
+
+-- 建立 3D 實體模型
+local function make3DKnife(k: {[string]: any}): Model
+	local m = Instance.new("Model")
+	local tier = k.tier or 1
+	local color = k.color or Color3.fromRGB(200, 200, 210)
+
+	local handle = Instance.new("Part")
+	handle.Name = "Handle"
+	handle.Size = Vector3.new(0.24, 1.3, 0.24)
+	handle.Color = Color3.fromRGB(45, 45, 50)
+	handle.Material = Enum.Material.Metal
+	handle.Anchored = true
+	handle.Parent = m
+
+	local grip = Instance.new("Part")
+	grip.Name = "Grip"
+	grip.Size = Vector3.new(0.32, 0.9, 0.32)
+	grip.Color = Color3.fromRGB(25, 25, 28)
+	grip.Material = Enum.Material.Rubber
+	grip.Anchored = true
+	grip.CFrame = handle.CFrame * CFrame.new(0, -0.2, 0)
+	grip.Parent = m
+
+	local guard = Instance.new("Part")
+	guard.Name = "Guard"
+	guard.Size = Vector3.new(0.85, 0.16, 0.34)
+	guard.Color = color
+	guard.Material = Enum.Material.Metal
+	guard.Anchored = true
+	guard.CFrame = handle.CFrame * CFrame.new(0, 0.65, 0)
+	guard.Parent = m
+
+	local bladeLen = 2.4 + tier * 0.24
+	local blade = Instance.new("Part")
+	blade.Name = "Blade"
+	blade.Size = Vector3.new(0.12, bladeLen, 0.52 + tier * 0.05)
+	blade.Color = color
+	blade.Material = (tier >= 4) and Enum.Material.Neon or Enum.Material.Metal
+	blade.Anchored = true
+	blade.CFrame = handle.CFrame * CFrame.new(0, 0.65 + bladeLen / 2, 0)
+	blade.Parent = m
+
+	local edge = Instance.new("Part")
+	edge.Name = "Edge"
+	edge.Size = Vector3.new(0.14, bladeLen * 0.95, 0.08)
+	edge.Color = Color3.new(1, 1, 1):Lerp(color, 0.35)
+	edge.Material = Enum.Material.Neon
+	edge.Anchored = true
+	edge.CFrame = blade.CFrame * CFrame.new(0, 0, -(blade.Size.Z / 2))
+	edge.Parent = m
+
+	m.PrimaryPart = handle
+	return m
+end
+
+local function selectKnife(id: string)
+	selectedKnifeId = id
+	local k: {[string]: any}?
+	for _, item in ipairs(knifeList) do
+		if item.id == id then k = item break end
+	end
+	if not k then return end
+
+	-- 更新 3D 預覽模型
+	if previewModel then previewModel:Destroy() end
+	previewModel = make3DKnife(k)
+	previewModel.Parent = vp
+
+	-- 更新詳情文字
+	local tier = math.clamp(k.tier or 1, 1, 6)
+	detName.Text = (TIER_NAMES[tier] or "") .. " " .. tostring(k.name) .. "之刃"
+	detName.TextColor3 = k.color or Color3.new(1, 1, 1)
+
+	detStats.Text = string.format(
+		"⚔️ 近戰傷害: %d 點 (聯機打人扣血)\n⚡ 反彈倍率: x%.2f 倍 (球速加成)\n🎯 判定範圍: %.1f 格 (更易擊中球)",
+		k.dmg or 25,
+		k.reflectMul or 1.25,
+		k.reach or 22
+	)
+
+	detDesc.Text = "🌟 專屬神技【" .. tostring(k.skill or "無") .. "】: " .. tostring(k.desc or "標準刀刃")
+
+	-- 更新操作按鈕
+	local isOwned = shopState.owned[id]
+	local isEquipped = (shopState.equipped == id)
+
+	if isEquipped then
+		actionBtn.Text = "✓ 當前已裝備"
+		actionBtn.BackgroundColor3 = Color3.fromRGB(45, 75, 50)
+		actionBtn.TextColor3 = Color3.fromRGB(160, 220, 170)
+	elseif isOwned then
+		actionBtn.Text = "裝備此神兵"
+		actionBtn.BackgroundColor3 = Color3.fromRGB(45, 120, 200)
+		actionBtn.TextColor3 = Color3.new(1, 1, 1)
+	else
+		local canBuy = shopState.coins >= (k.price or 0)
+		actionBtn.Text = string.format("購買神兵 (¥ %d)", k.price or 0)
+		actionBtn.BackgroundColor3 = canBuy and Color3.fromRGB(200, 140, 40) or Color3.fromRGB(110, 60, 50)
+		actionBtn.TextColor3 = canBuy and Color3.fromRGB(255, 245, 220) or Color3.fromRGB(230, 170, 170)
+	end
+
+	-- 高亮左側選中卡片
+	for cId, cell in pairs(shopCells) do
+		if cId == id then
+			cell.BackgroundColor3 = Color3.fromRGB(45, 52, 68)
+		else
+			cell.BackgroundColor3 = Color3.fromRGB(26, 29, 36)
 		end
 	end
 end
 
+actionBtn.Activated:Connect(function()
+	if not selectedKnifeId then return end
+	if shopState.owned[selectedKnifeId] then
+		if shopState.equipped ~= selectedKnifeId then
+			Net:FireServer({act = "equipnife", id = selectedKnifeId})
+		end
+	else
+		Net:FireServer({act = "buynife", id = selectedKnifeId})
+	end
+end)
+
+-- 3D 刀刃平滑旋轉
+task.spawn(function()
+	local t0 = os.clock()
+	while true do
+		task.wait(0.03)
+		if shopFrame.Visible and previewModel and previewModel.PrimaryPart then
+			local elapsed = os.clock() - t0
+			previewModel:PivotTo(CFrame.new(0, 0.45, 0) * CFrame.Angles(math.rad(18), elapsed * 1.4, math.rad(-14)))
+			vpCam.CFrame = CFrame.lookAt(Vector3.new(0, 1.8, 4.3), Vector3.new(0, 1.8, 0))
+		end
+	end
+end)
+
+local function refreshShop()
+	shopCoins.Text = "💰 ¥ " .. shopState.coins
+	for _, k in ipairs(knifeList) do
+		local cell = shopCells[k.id]
+		if cell then
+			local stLabel = cell:FindFirstChild("ST") :: TextLabel?
+			if stLabel then
+				if shopState.owned[k.id] then
+					if shopState.equipped == k.id then
+						stLabel.Text = "✓ 已裝備"
+						stLabel.TextColor3 = Color3.fromRGB(110, 240, 130)
+					else
+						stLabel.Text = "已擁有"
+						stLabel.TextColor3 = Color3.fromRGB(180, 210, 240)
+					end
+				else
+					stLabel.Text = "¥ " .. k.price
+					stLabel.TextColor3 = (shopState.coins >= k.price) and Color3.fromRGB(255, 215, 90) or Color3.fromRGB(240, 110, 110)
+				end
+			end
+		end
+	end
+	selectKnife(selectedKnifeId or (knifeList[1] and knifeList[1].id or "steel"))
+end
+
 local function buildShopCells()
-	for _, child in ipairs(shopGrid:GetChildren()) do
-		if child:IsA("TextButton") then child:Destroy() end
+	for _, child in ipairs(listScroll:GetChildren()) do
+		if child:IsA("Frame") then child:Destroy() end
 	end
 	shopCells = {}
+
+	local rowH = 68
+	local totalH = #knifeList * (rowH + 8)
+	listScroll.CanvasSize = UDim2.new(0, 0, 0, totalH)
+
 	for idx, k in ipairs(knifeList) do
-		local cell = Instance.new("TextButton")
+		local tier = math.clamp(k.tier or 1, 1, 6)
+		local cell = Instance.new("Frame")
 		cell.Name = k.id
 		cell.LayoutOrder = idx
-		cell.Text = ""
-		cell.ZIndex = 21
-		styleRound(cell :: any, 10)
-		cell.Parent = shopGrid
+		cell.Size = UDim2.new(1, -12, 0, rowH)
+		cell.BackgroundColor3 = Color3.fromRGB(26, 29, 36)
+		cell.ZIndex = 22
+		styleRound(cell :: any, 8)
+		cell.Parent = listScroll
 
+		-- 等級角標
+		local tierBadge = Instance.new("TextLabel")
+		tierBadge.Size = UDim2.new(0, 42, 0, 22)
+		tierBadge.Position = UDim2.new(0, 8, 0, 10)
+		tierBadge.BackgroundColor3 = TIER_COLORS[tier] or Color3.fromRGB(150, 150, 150)
+		tierBadge.TextColor3 = Color3.fromRGB(20, 20, 25)
+		tierBadge.TextSize = 12
+		tierBadge.Font = Enum.Font.GothamBold
+		tierBadge.Text = "T" .. tier
+		tierBadge.ZIndex = 23
+		styleRound(tierBadge :: any, 4)
+		tierBadge.Parent = cell
+
+		-- 武器名稱
 		local nm = Instance.new("TextLabel")
 		nm.Name = "KN"
-		nm.Size = UDim2.new(1, -8, 0, 34)
-		nm.Position = UDim2.new(0, 4, 0, 8)
+		nm.Size = UDim2.new(0, 150, 0, 24)
+		nm.Position = UDim2.new(0, 56, 0, 8)
 		nm.BackgroundTransparency = 1
-		nm.TextColor3 = k.color
-		nm.TextScaled = true
-		nm.Font = Enum.Font.SourceSansBold
-		nm.Text = "🗡 " .. k.name
-		nm.ZIndex = 22
+		nm.TextColor3 = k.color or Color3.new(1, 1, 1)
+		nm.TextSize = 16
+		nm.Font = Enum.Font.GothamBold
+		nm.TextXAlignment = Enum.TextXAlignment.Left
+		nm.Text = tostring(k.name) .. "之刃"
+		nm.ZIndex = 23
 		nm.Parent = cell
 
-		-- 特效等級（越貴星星越多；不再顯示傷害）
-		local fx = Instance.new("TextLabel")
-		fx.Name = "FX"
-		fx.Size = UDim2.new(1, -8, 0, 20)
-		fx.Position = UDim2.new(0, 4, 0, 44)
-		fx.BackgroundTransparency = 1
-		fx.TextColor3 = k.color
-		fx.TextScaled = true
-		fx.Font = Enum.Font.SourceSansBold
-		fx.Text = ""
-		fx.ZIndex = 22
-		fx.Parent = cell
+		-- 屬性數值行（傷害 | 反彈 | 判定）
+		local statsRow = Instance.new("TextLabel")
+		statsRow.Size = UDim2.new(1, -64, 0, 20)
+		statsRow.Position = UDim2.new(0, 10, 0, 38)
+		statsRow.BackgroundTransparency = 1
+		statsRow.TextColor3 = Color3.fromRGB(160, 170, 185)
+		statsRow.TextSize = 12
+		statsRow.Font = Enum.Font.SourceSans
+		statsRow.TextXAlignment = Enum.TextXAlignment.Left
+		statsRow.Text = string.format("傷 %d · 反彈 x%.1f · 判定 %d", k.dmg or 25, k.reflectMul or 1.25, k.reach or 22)
+		statsRow.ZIndex = 23
+		statsRow.Parent = cell
 
-		local stars = math.clamp(k.tier or 1, 1, 6)
-		fx.Text = "刀光 " .. string.rep("★", stars) .. string.rep("☆", 6 - stars)
+		-- 擁有/價格狀態
+		local st = Instance.new("TextLabel")
+		st.Name = "ST"
+		st.Size = UDim2.new(0, 80, 0, 24)
+		st.Position = UDim2.new(1, -88, 0, 8)
+		st.BackgroundTransparency = 1
+		st.TextSize = 14
+		st.Font = Enum.Font.GothamBold
+		st.TextXAlignment = Enum.TextXAlignment.Right
+		st.Text = ""
+		st.ZIndex = 23
+		st.Parent = cell
 
-		local pr = Instance.new("TextLabel")
-		pr.Name = "PR"
-		pr.Size = UDim2.new(1, -8, 0, 26)
-		pr.Position = UDim2.new(0, 4, 0, 66)
-		pr.BackgroundTransparency = 1
-		pr.TextScaled = true
-		pr.Font = Enum.Font.SourceSansBold
-		pr.Text = ""
-		pr.ZIndex = 22
-		pr.Parent = cell
-
-		cell.Activated:Connect(function()
-			if shopState.owned[k.id] then
-				if shopState.equipped ~= k.id then
-					Net:FireServer({act = "equipnife", id = k.id})
-				end
-			else
-				Net:FireServer({act = "buynife", id = k.id})
-			end
+		-- 點擊卡片選中預覽
+		local clickBtn = Instance.new("TextButton")
+		clickBtn.Size = UDim2.new(1, 0, 1, 0)
+		clickBtn.BackgroundTransparency = 1
+		clickBtn.Text = ""
+		clickBtn.ZIndex = 24
+		clickBtn.Parent = cell
+		clickBtn.Activated:Connect(function()
+			selectKnife(k.id)
 		end)
 
 		shopCells[k.id] = cell
 	end
+
 	refreshShop()
 end
-
 -- ------------------------------------------------------------
 -- 抽獎機
 -- ------------------------------------------------------------
@@ -561,4 +822,5 @@ Net.OnClientEvent:Connect(function(msg: any)
 end)
 
 showToast("歡迎來到躲避球大亂鬥！靠近櫃檯買刀＆抽獎")
+
 

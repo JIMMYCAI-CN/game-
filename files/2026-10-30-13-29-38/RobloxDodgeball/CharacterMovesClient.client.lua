@@ -68,7 +68,7 @@ local CONFIG = {
 	RunAnimSpeed = 1.15,
 
 	-- 攻擊（伺服器端另有一道冷卻）
-	AttackCooldown = 0.5,
+	AttackCooldown = 0.28,
 
 	-- 按鍵
 	SprintKey = Enum.KeyCode.LeftShift,
@@ -81,12 +81,15 @@ local CONFIG = {
 
 	AutoSprint = false,      -- true = 一移動就自動跑，不用按 Shift
 
-	-- 動作 ID
+	-- 動作 ID（Walk/Run 空字串以使用 Roblox 原生絲滑 R15 動畫，Attack 支援三段連招）
 	AnimationIds = {
-		Walk = "rbxassetid://119174241724731",
-		Run = "rbxassetid://128677818236008",
+		Walk = "",
+		Run = "",
 		Slide = "rbxassetid://113527499571998",
-		Attack = "rbxassetid://113532863616074",
+		Attack = "rbxassetid://522635533",
+		Attack1 = "rbxassetid://522635533",       -- 第一式：疾風斜斬
+		Attack2 = "rbxassetid://522638767",       -- 第二式：回旋上挑
+		Attack3 = "rbxassetid://113532863616074", -- 第三式：凌空重斬
 		DoubleJump = "rbxassetid://78281951371423",
 		Dash = "rbxassetid://138926327377619",
 		DodgeLeft = "rbxassetid://127771728638518",
@@ -546,7 +549,10 @@ local function tryDoubleJump()
 	log(("二段跳 觸發（第 %d 次，速度 %d）"):format(jumpsUsed, CONFIG.DoubleJumpVelocity))
 end
 
---============================ 攻擊 ============================
+--============================ 攻擊（帥氣三段連擊刀法）============================
+local comboStep = 1
+local lastComboTime = 0
+
 local function doAttack()
 	local now = os.clock()
 	if now - lastAttackTime < CONFIG.AttackCooldown then
@@ -556,21 +562,42 @@ local function doAttack()
 		return
 	end
 
-	lastAttackTime = now
-
-	if tracks.Attack then
-		tracks.Attack:Play(0.08)
-	else
-		warn("[CharacterMoves] 攻擊動畫沒有載入")
+	-- 0.85 秒內連續擊打視為連擊，超過時間則重置為第一式
+	if now - lastComboTime > 0.85 then
+		comboStep = 1
 	end
 
-	log("攻擊 播放")
+	lastAttackTime = now
+	lastComboTime = now
 
-	task.delay(0.1, function()
-		if attackRemote then
-			attackRemote:FireServer()
-		end
-	end)
+	local currentHit = comboStep
+	comboStep = (comboStep % 3) + 1
+
+	-- 播放連貫動作（第一式：斜斬、第二式：上挑突進、第三式：躍起重劈）
+	local trackName = "Attack" .. currentHit
+	local tr = tracks[trackName] or tracks.Attack
+	if tr then
+		tr:Stop(0.04)
+		local speed = (currentHit == 3) and 1.2 or 1.35
+		tr:Play(0.06, 1, speed)
+	end
+
+	-- 揮刀破空音效（音調隨連擊遞增）
+	if rootPart then
+		local s = Instance.new("Sound")
+		s.SoundId = "rbxasset://sounds/swordslash.wav"
+		s.Volume = (currentHit == 3) and 1.2 or 0.85
+		s.PlaybackSpeed = (currentHit == 1 and 1.05) or (currentHit == 2 and 1.22) or 0.88
+		s.Parent = rootPart
+		s:Play()
+		game:GetService("Debris"):AddItem(s, 1.2)
+	end
+
+	log(("連貫刀法 第 %d 式！"):format(currentHit))
+
+	if attackRemote then
+		attackRemote:FireServer(currentHit)
+	end
 end
 
 --============================ 每幀更新 ============================
@@ -649,31 +676,17 @@ local function setupCharacter(newCharacter)
 	local defaultIds = {}
 	local animate = character:FindFirstChild("Animate") or character:WaitForChild("Animate", 5)
 
+	-- 保持 Roblox 官方原生 Animate 啟用，提供絲滑自然的行走、跑步與呼吸動作
 	if animate then
-		for _, folderName in ipairs({ "idle", "jump", "fall" }) do
-			local folder = animate:FindFirstChild(folderName)
-			local animation = folder and folder:FindFirstChildWhichIsA("Animation")
-			if animation and animation.AnimationId ~= "" then
-				defaultIds[folderName] = animation.AnimationId
-			end
-		end
-		animate.Disabled = true
-	else
-		warn("[CharacterMoves] 找不到角色的 Animate 腳本，待機/跳躍會沒有動畫，但其他動作仍可用")
-	end
-
-	for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
-		track:Stop(0)
+		animate.Disabled = false
 	end
 
 	local trackOrder = {
-		{ "Idle", defaultIds.idle, true, Enum.AnimationPriority.Core },
-		{ "Jump", defaultIds.jump, true, Enum.AnimationPriority.Core },
-		{ "Fall", defaultIds.fall, true, Enum.AnimationPriority.Core },
-		{ "Walk", CONFIG.AnimationIds.Walk, true, Enum.AnimationPriority.Movement },
-		{ "Run", CONFIG.AnimationIds.Run, true, Enum.AnimationPriority.Movement },
 		{ "Slide", CONFIG.AnimationIds.Slide, false, Enum.AnimationPriority.Action },
 		{ "Attack", CONFIG.AnimationIds.Attack, false, Enum.AnimationPriority.Action },
+		{ "Attack1", CONFIG.AnimationIds.Attack1, false, Enum.AnimationPriority.Action },
+		{ "Attack2", CONFIG.AnimationIds.Attack2, false, Enum.AnimationPriority.Action },
+		{ "Attack3", CONFIG.AnimationIds.Attack3, false, Enum.AnimationPriority.Action },
 		{ "DoubleJump", CONFIG.AnimationIds.DoubleJump, false, Enum.AnimationPriority.Action },
 		{ "Dash", CONFIG.AnimationIds.Dash, false, Enum.AnimationPriority.Action },
 		{ "DodgeLeft", CONFIG.AnimationIds.DodgeLeft, false, Enum.AnimationPriority.Action },
@@ -873,4 +886,5 @@ if UserInputService.KeyboardEnabled then
 		gui:Destroy()
 	end)
 end
+
 

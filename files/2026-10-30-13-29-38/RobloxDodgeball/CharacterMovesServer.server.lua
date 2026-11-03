@@ -20,7 +20,7 @@ local Players = game:GetService("Players")
 --============================ 可調整設定 ============================
 local CONFIG = {
 	Debug = true,        -- true = 在 Output 印出攻擊請求
-	Cooldown = 0.35,     -- 客戶端請求最短間隔（真正的刀冷卻在 DodgeballServer）
+	Cooldown = 0.22,     -- 客戶端請求最短間隔（真正的刀冷卻在 DodgeballServer）
 }
 --====================================================================
 
@@ -80,4 +80,5 @@ end)
 Players.PlayerRemoving:Connect(function(player)
 	cooldowns[player] = nil
 end)
+
 
