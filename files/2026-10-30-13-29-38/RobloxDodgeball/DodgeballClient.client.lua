@@ -824,6 +824,40 @@ end
 -- ------------------------------------------------------------
 -- 伺服器事件
 -- ------------------------------------------------------------
+
+-- ============================================================
+-- 戰鬥地圖背景音樂（對局熱血戰歌）
+-- ============================================================
+local SoundService = game:GetService("SoundService")
+local arenaBgm = Instance.new("Sound")
+arenaBgm.Name = "ArenaCombatBGM"
+arenaBgm.Looped = true
+arenaBgm.Volume = 0
+arenaBgm.Parent = SoundService
+
+local BATTLE_TRACKS = {
+	"rbxassetid://1843404009", -- 高能電子動作戰歌
+	"rbxassetid://9043887091", -- 賽博霓虹激戰
+	"rbxassetid://1837877685", -- 疾速電子決戰
+}
+
+local function startArenaMusic()
+	arenaBgm:Stop()
+	arenaBgm.SoundId = BATTLE_TRACKS[math.random(1, #BATTLE_TRACKS)]
+	arenaBgm.Volume = 0
+	arenaBgm:Play()
+	TweenService:Create(arenaBgm, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Volume = 0.40}):Play()
+end
+
+local function stopArenaMusic()
+	TweenService:Create(arenaBgm, TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Volume = 0}):Play()
+	task.delay(1.55, function()
+		if arenaBgm.Volume <= 0.05 then
+			arenaBgm:Stop()
+		end
+	end)
+end
+
 Net.OnClientEvent:Connect(function(msg: any)
 	if type(msg) ~= "table" then return end
 	local act = msg.act
@@ -837,6 +871,7 @@ Net.OnClientEvent:Connect(function(msg: any)
 		statusLabel.Text = tostring(data)
 	elseif act == "mapinfo" then
 		addFeed("🗺 本回合地圖：" .. tostring(data), Color3.fromRGB(140, 220, 255))
+		startArenaMusic()
 	elseif act == "killfeed" then
 		local d = data :: any
 		if d.by == "ball" then
@@ -852,6 +887,7 @@ Net.OnClientEvent:Connect(function(msg: any)
 		end
 	elseif act == "winner" then
 		statusLabel.Text = "🏆 " .. tostring(data) .. " 獲勝！"
+		stopArenaMusic()
 	elseif act == "openshop" then
 		Net:FireServer({act = "openshop"})
 		shopFrame.Visible = true

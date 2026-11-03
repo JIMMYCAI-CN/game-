@@ -459,32 +459,154 @@ local function buildLobby()
 	part({Name = "SouthCarpet", Size = Vector3.new(12, 0.48, 32), Position = LOBBY_CENTER + Vector3.new(0, LY_DECK + 0.03, 32),
 		Color = Color3.fromRGB(145, 38, 42), Material = Enum.Material.Fabric}, island)
 
-	-- 6. 和風典雅景觀：櫻花樹、石燈籠與水景庭園（自然寫意，絕非刺眼全黃）
+	-- 6. 真實唯美和風櫻花樹（老幹虯枝、多層次漸層花簇、飄落花瓣粒子與落櫻地毯）
 	local function makeSakuraTree(x, z, scale)
 		scale = scale or 1.0
-		local trunk = part({Name = "SakuraTrunk", Size = Vector3.new(2.4 * scale, 12 * scale, 2.4 * scale),
-			Position = LOBBY_CENTER + Vector3.new(x, LY_BASE + 7 * scale, z),
-			Color = Color3.fromRGB(92, 60, 42), Material = Enum.Material.Wood}, island)
-		local leafCol = Color3.fromRGB(255, 192, 218)
-		local leafCol2 = Color3.fromRGB(255, 175, 208)
-		part({Shape = Enum.PartType.Ball, Size = Vector3.new(12 * scale, 10 * scale, 12 * scale),
-			Position = LOBBY_CENTER + Vector3.new(x, LY_BASE + 14 * scale, z),
-			Color = leafCol, Material = Enum.Material.Grass}, island)
-		part({Shape = Enum.PartType.Ball, Size = Vector3.new(8 * scale, 7 * scale, 9 * scale),
-			Position = LOBBY_CENTER + Vector3.new(x + 3.5 * scale, LY_BASE + 12 * scale, z - 2 * scale),
-			Color = leafCol2, Material = Enum.Material.Grass}, island)
-		part({Shape = Enum.PartType.Ball, Size = Vector3.new(9 * scale, 7 * scale, 8 * scale),
-			Position = LOBBY_CENTER + Vector3.new(x - 3 * scale, LY_BASE + 13 * scale, z + 2.5 * scale),
-			Color = leafCol, Material = Enum.Material.Grass}, island)
+		local basePos = LOBBY_CENTER + Vector3.new(x, LY_DECK, z)
+		local barkCol = Color3.fromRGB(56, 38, 30)
+
+		-- 樹幹基座（四向盤根）
+		part({Name = "RootBase", Size = Vector3.new(3.8 * scale, 1.0 * scale, 3.8 * scale),
+			Position = basePos + Vector3.new(0, 0.4 * scale, 0),
+			Color = barkCol, Material = Enum.Material.Wood}, island)
+
+		-- 虯曲傾斜主幹（多段自然蒼勁造型）
+		local t1 = part({Name = "Trunk1", Size = Vector3.new(2.4 * scale, 5.5 * scale, 2.4 * scale),
+			Position = basePos + Vector3.new(0, 3.0 * scale, 0),
+			Color = barkCol, Material = Enum.Material.Wood}, island)
+		t1.CFrame = CFrame.new(basePos + Vector3.new(0, 3.0 * scale, 0)) * CFrame.Angles(math.rad(4), 0, math.rad(-5))
+
+		local t2 = part({Name = "Trunk2", Size = Vector3.new(2.0 * scale, 5.0 * scale, 2.0 * scale),
+			Position = basePos + Vector3.new(-0.4 * scale, 7.5 * scale, 0.3 * scale),
+			Color = barkCol, Material = Enum.Material.Wood}, island)
+		t2.CFrame = CFrame.new(basePos + Vector3.new(-0.4 * scale, 7.5 * scale, 0.3 * scale)) * CFrame.Angles(math.rad(-6), 0, math.rad(7))
+
+		-- 四向舒展枝椏
+		local BRANCHES = {
+			{off = Vector3.new(2.2, 9.8, 1.2), sz = Vector3.new(1.2, 4.5, 1.2), ang = CFrame.Angles(math.rad(30), math.rad(25), math.rad(-35))},
+			{off = Vector3.new(-2.4, 9.5, -1.0), sz = Vector3.new(1.2, 4.2, 1.2), ang = CFrame.Angles(math.rad(-25), math.rad(-40), math.rad(30))},
+			{off = Vector3.new(0.8, 10.5, -2.2), sz = Vector3.new(1.1, 4.0, 1.1), ang = CFrame.Angles(math.rad(-35), math.rad(10), math.rad(-15))},
+			{off = Vector3.new(-1.0, 11.2, 2.0), sz = Vector3.new(1.1, 4.2, 1.1), ang = CFrame.Angles(math.rad(28), math.rad(-20), math.rad(20))},
+		}
+		for _, b in ipairs(BRANCHES) do
+			local br = part({Name = "Branch", Size = b.sz * scale,
+				Position = basePos + b.off * scale,
+				Color = barkCol, Material = Enum.Material.Wood}, island)
+			br.CFrame = CFrame.new(basePos + b.off * scale) * b.ang
+		end
+
+		-- 多層次雲狀漸層花簇（櫻粉、淡粉、白粉立體交錯）
+		local CLUSTERS = {
+			{off = Vector3.new(0, 13.5, 0), sz = Vector3.new(10.5, 6.5, 10.5), col = Color3.fromRGB(255, 195, 218)},
+			{off = Vector3.new(3.2, 12.0, 1.8), sz = Vector3.new(8.2, 5.5, 8.2), col = Color3.fromRGB(255, 180, 210)},
+			{off = Vector3.new(-3.4, 11.8, -1.5), sz = Vector3.new(8.0, 5.2, 8.0), col = Color3.fromRGB(255, 208, 228)},
+			{off = Vector3.new(1.2, 12.8, -3.2), sz = Vector3.new(7.6, 5.0, 7.6), col = Color3.fromRGB(250, 175, 205)},
+			{off = Vector3.new(-1.5, 13.2, 3.0), sz = Vector3.new(7.8, 5.0, 7.8), col = Color3.fromRGB(255, 215, 235)},
+			{off = Vector3.new(2.0, 14.8, -0.8), sz = Vector3.new(6.5, 4.5, 6.5), col = Color3.fromRGB(255, 228, 240)},
+			{off = Vector3.new(-1.8, 14.5, 1.0), sz = Vector3.new(6.8, 4.2, 6.8), col = Color3.fromRGB(255, 190, 215)},
+		}
+		for _, c in ipairs(CLUSTERS) do
+			part({Name = "BlossomCrown", Shape = Enum.PartType.Ball,
+				Size = c.sz * scale,
+				Position = basePos + c.off * scale,
+				Color = c.col, Material = Enum.Material.Grass}, island)
+		end
+
+		-- 飄落櫻花瓣粒子系統（微風吹拂，斜向旋轉飄落）
+		local emitterPart = part({Name = "PetalEmitter", Size = Vector3.new(8 * scale, 1, 8 * scale),
+			Position = basePos + Vector3.new(0, 14 * scale, 0),
+			Transparency = 1, CanCollide = false}, island)
+		local pe = Instance.new("ParticleEmitter")
+		pe.Rate = 5
+		pe.Lifetime = NumberRange.new(5, 8)
+		pe.Speed = NumberRange.new(1.5, 3.0)
+		pe.Acceleration = Vector3.new(1.6, -1.8, 0.8)
+		pe.SpreadAngle = Vector2.new(50, 50)
+		pe.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 220, 235)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 185, 215)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(250, 160, 195))
+		})
+		pe.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.45 * scale),
+			NumberSequenceKeypoint.new(0.8, 0.38 * scale),
+			NumberSequenceKeypoint.new(1, 0.15 * scale)
+		})
+		pe.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.15),
+			NumberSequenceKeypoint.new(0.8, 0.25),
+			NumberSequenceKeypoint.new(1, 1.0)
+		})
+		pe.Rotation = NumberRange.new(0, 360)
+		pe.RotSpeed = NumberRange.new(-45, 45)
+		pe.Parent = emitterPart
+
+		-- 地面落櫻花瓣地毯
+		local carpet = part({Name = "PetalCarpet", Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.08, 14 * scale, 14 * scale),
+			Position = basePos + Vector3.new(0, 0.05, 0),
+			Color = Color3.fromRGB(255, 195, 220), Material = Enum.Material.Sand,
+			Transparency = 0.55, CanCollide = false}, island)
+		carpet.CFrame = CFrame.new(basePos + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, math.rad(90))
 	end
 
-	-- 櫻花樹點綴在廣場四周
-	makeSakuraTree(-48, -45, 1.1)
-	makeSakuraTree(48, -45, 1.1)
-	makeSakuraTree(-68, 38, 1.0)
-	makeSakuraTree(68, 38, 1.0)
-	makeSakuraTree(-78, -12, 0.9)
-	makeSakuraTree(78, -12, 0.9)
+	-- 櫻花樹圍繞在廣場四季景觀四周
+	makeSakuraTree(-48, -45, 1.15)
+	makeSakuraTree(48, -45, 1.15)
+	makeSakuraTree(-68, 38, 1.05)
+	makeSakuraTree(68, 38, 1.05)
+	makeSakuraTree(-78, -12, 0.95)
+	makeSakuraTree(78, -12, 0.95)
+
+	-- ------------------------------------------------------------
+	-- 大廳全新場景元素：枯山水庭石景觀、錦鯉木拱橋、軍械庫兵器架
+	-- ------------------------------------------------------------
+	-- 1. 西北角：枯山水禪意景觀（Zen Rock Garden）
+	local zenC = LOBBY_CENTER + Vector3.new(-42, LY_DECK, -26)
+	part({Name = "ZenGravel", Size = Vector3.new(22, 0.3, 18), Position = zenC + Vector3.new(0, 0.15, 0),
+		Color = Color3.fromRGB(205, 208, 215), Material = Enum.Material.Sand}, island)
+	part({Name = "ZenBorder", Size = Vector3.new(23, 0.5, 19), Position = zenC + Vector3.new(0, 0.25, 0),
+		Color = Color3.fromRGB(72, 50, 40), Material = Enum.Material.WoodPlanks}, island)
+	-- 禪石（高低錯落黑玄武岩石組）
+	local r1 = part({Name = "ZenRock1", Size = Vector3.new(4.5, 3.6, 3.8), Position = zenC + Vector3.new(-4, 1.8, -2),
+		Color = Color3.fromRGB(48, 52, 60), Material = Enum.Material.Slate}, island)
+	r1.CFrame = CFrame.new(zenC + Vector3.new(-4, 1.8, -2)) * CFrame.Angles(math.rad(15), math.rad(35), math.rad(-10))
+	local r2 = part({Name = "ZenRock2", Size = Vector3.new(3.2, 2.4, 2.8), Position = zenC + Vector3.new(2, 1.2, 3),
+		Color = Color3.fromRGB(60, 64, 72), Material = Enum.Material.Slate}, island)
+	r2.CFrame = CFrame.new(zenC + Vector3.new(2, 1.2, 3)) * CFrame.Angles(math.rad(-10), math.rad(-25), math.rad(12))
+
+	-- 2. 東北角：錦鯉木拱橋與幽藍蓮花水景（Koi Stream & Bridge）
+	local koiC = LOBBY_CENTER + Vector3.new(42, LY_DECK, -26)
+	local water = part({Name = "KoiPond", Size = Vector3.new(20, 0.2, 16), Position = koiC + Vector3.new(0, 0.08, 0),
+		Color = Color3.fromRGB(35, 140, 200), Material = Enum.Material.Glass, Transparency = 0.35, CanCollide = false}, island)
+	local waterLt = Instance.new("PointLight")
+	waterLt.Color = Color3.fromRGB(80, 190, 255); waterLt.Brightness = 1.2; waterLt.Range = 16; waterLt.Parent = water
+	-- 拱橋（弧形木橋）
+	for bi = 1, 7 do
+		local t = (bi - 4) / 3.0
+		local by = math.cos(t * 1.1) * 2.2
+		local bAngle = -t * 0.35
+		local plank = part({Name = "BridgePlank", Size = Vector3.new(7.5, 0.45, 2.2),
+			Position = koiC + Vector3.new(0, by, (bi - 4) * 2.1),
+			Color = Color3.fromRGB(135, 45, 38), Material = Enum.Material.WoodPlanks}, island)
+		plank.CFrame = CFrame.new(koiC + Vector3.new(0, by, (bi - 4) * 2.1)) * CFrame.Angles(bAngle, 0, 0)
+	end
+
+	-- 3. 東側軍械庫：刀劍兵器譜展示架（Weapon Display Racks）
+	local rackC = LOBBY_CENTER + Vector3.new(48, LY_DAIS + 0.6, 9)
+	part({Name = "WeaponRackFrameL", Size = Vector3.new(0.6, 6.2, 1.2), Position = rackC + Vector3.new(-3.5, 3.1, 0),
+		Color = Color3.fromRGB(52, 36, 28), Material = Enum.Material.Wood}, island)
+	part({Name = "WeaponRackFrameR", Size = Vector3.new(0.6, 6.2, 1.2), Position = rackC + Vector3.new(3.5, 3.1, 0),
+		Color = Color3.fromRGB(52, 36, 28), Material = Enum.Material.Wood}, island)
+	for ri = 1, 3 do
+		local barY = 1.6 + (ri - 1) * 1.8
+		part({Name = "WeaponRackBar", Size = Vector3.new(7.4, 0.3, 0.8), Position = rackC + Vector3.new(0, barY, 0),
+			Color = Color3.fromRGB(42, 28, 20), Material = Enum.Material.Wood}, island)
+		-- 架上陳列的發光名刀
+		local rackBlade = part({Name = "DisplayBlade", Size = Vector3.new(5.5, 0.18, 0.4), Position = rackC + Vector3.new(0, barY + 0.3, 0),
+			Color = (ri == 1 and Color3.fromRGB(255, 90, 90)) or (ri == 2 and Color3.fromRGB(120, 210, 255)) or Color3.fromRGB(255, 215, 60),
+			Material = Enum.Material.Neon}, island)
+	end
 
 	-- 典雅石燈籠（散發柔和溫馨微光，非全屏大黃光）
 	local function makeLantern(x, z)
@@ -1038,19 +1160,20 @@ local function buildLobby()
 			end)
 
 			local collected = false
-			coin.Touched:Connect(function(hit)
-				if collected then return end
-				local ch = hit.Parent
+			local function tryCollect(hit: Instance)
+				if collected or not coin.Parent then return end
+				local ch = hit:FindFirstAncestorOfClass("Model")
 				local plr = ch and Players:GetPlayerFromCharacter(ch)
-				if plr and ch:FindFirstChild("Humanoid") and ch.Humanoid.Health > 0 then
+				local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+				if plr and hum and hum.Health > 0 then
 					collected = true
 					activeCoins[coin] = nil
 					if spinConn then spinConn:Disconnect() end
 
 					local chime = Instance.new("Sound")
 					chime.SoundId = "rbxassetid://1872746013"
-					chime.Volume = 1.3
-					chime.PlaybackSpeed = 1.1 + math.random() * 0.1
+					chime.Volume = 1.35
+					chime.PlaybackSpeed = 1.12 + math.random() * 0.1
 					chime.Parent = workspace
 					chime:Play()
 					game:GetService("Debris"):AddItem(chime, 2.0)
@@ -1062,9 +1185,9 @@ local function buildLobby()
 					send(plr, "coinpopup", {pos = coin.Position, amt = 10})
 					send(plr, "toast", "💰 撿到了大廳幸運金幣！+10 金幣！")
 
-					ballBurst(coin.Position, Color3.fromRGB(255, 215, 0), 1.6)
+					ballBurst(coin.Position, Color3.fromRGB(255, 215, 0), 1.8)
 
-					-- 撿完立即消失（0秒延遲徹底銷毀實例，絕無殘留火花與判定）
+					-- 撿完立即銷毀實例（0秒延遲徹底消失，絕無殘留判定與火花）
 					coin:Destroy()
 
 					-- 隔一段隨機時間（10~15秒）後，在空閒隨機點位重新出現
@@ -1081,6 +1204,24 @@ local function buildLobby()
 							spawnOneCoin(avail[math.random(1, #avail)])
 						end
 					end)
+				end
+			end
+
+			coin.Touched:Connect(tryCollect)
+
+			-- 輔助心跳偵測（防止網路延遲/穿透漏判定）
+			task.spawn(function()
+				while coin.Parent and not collected do
+					task.wait(0.18)
+					if collected or not coin.Parent then break end
+					for _, p in ipairs(Players:GetPlayers()) do
+						local c = p.Character
+						local r = c and c:FindFirstChild("HumanoidRootPart")
+						if r and (r.Position - pos).Magnitude <= 4.2 then
+							tryCollect(r)
+							break
+						end
+					end
 				end
 			end)
 		end
@@ -1532,38 +1673,127 @@ end
 
 local boardC = LOBBY_CENTER + Vector3.new(0, 0, -38)
 local padY = LOBBY_CENTER.Y + 0.45
-local PAD_HALF_X, PAD_HALF_Z = 6, 5
+local PAD_COLORS = {
+	Color3.fromRGB(0, 225, 255),   -- 地圖 1：賽博霓虹青藍
+	Color3.fromRGB(255, 215, 60),  -- 地圖 2：帝皇金芒
+	Color3.fromRGB(235, 65, 225),  -- 地圖 3：霓虹紫紅
+}
+local mapFloatingBillboards: {BillboardGui} = {}
 
 local function buildMapBoard()
 	-- 木框平台
-	part({Size = Vector3.new(60, 0.4, 34), Position = boardC + Vector3.new(0, 1.2, 0),
+	part({Size = Vector3.new(62, 0.4, 34), Position = boardC + Vector3.new(0, 1.2, 0),
 		Color = Color3.fromRGB(72, 48, 36), Material = Enum.Material.WoodPlanks})
-	part({Size = Vector3.new(62, 1.2, 36), Position = boardC + Vector3.new(0, 0.4, 0),
+	part({Size = Vector3.new(64, 1.2, 36), Position = boardC + Vector3.new(0, 0.4, 0),
 		Color = Color3.fromRGB(45, 48, 56), Material = Enum.Material.Slate})
 
 	-- 標題告示牌
-	local sign = part({Size = Vector3.new(28, 3.4, 0.6), Position = boardC + Vector3.new(0, 5.2, -16.2),
+	local sign = part({Size = Vector3.new(34, 3.8, 0.6), Position = boardC + Vector3.new(0, 5.4, -16.2),
 		Color = Color3.fromRGB(36, 38, 46), Material = Enum.Material.Slate})
 	local sg = Instance.new("SurfaceGui")
 	sg.Face = Enum.NormalId.Back; sg.CanvasSize = Vector2.new(700, 100); sg.Parent = sign
 	local st = Instance.new("TextLabel")
 	st.Size = UDim2.new(1, 0, 1, 0); st.BackgroundTransparency = 1
-	st.Text = "🗺️ 地圖投票：請站上對應光環板進行投票"
+	st.Text = "🗺️ 地圖投票：請踩入對應光柱進行投票 🗺️"
 	st.TextColor3 = Color3.fromRGB(255, 230, 120); st.TextScaled = true
 	st.Font = Enum.Font.GothamBold; st.Parent = sg
 
-	-- 3 塊投票板（站上去投票）＋ 後方立式告示牌（名字＋票數）
+	-- 3 塊投票板（極顯眼立體光柱 + 3D 浮空投票標題 + 票數）
 	for k = 1, 3 do
-		local px = -16 + (k - 1) * 16
-		local pad = part({Size = Vector3.new(12, 0.35, 10),
+		local px = -18 + (k - 1) * 18
+		local padCol = PAD_COLORS[k] or Color3.fromRGB(255, 255, 255)
+		local pad = part({Size = Vector3.new(13, 0.4, 11),
 			Position = Vector3.new(boardC.X + px, padY, boardC.Z + 3),
-			Color = Color3.fromRGB(90, 95, 110), Material = Enum.Material.SmoothPlastic})
-		-- 霓虹描邊
-		part({Size = Vector3.new(12.6, 0.2, 10.6),
-			Position = Vector3.new(boardC.X + px, padY - 0.2, boardC.Z + 3),
-			Color = Color3.fromRGB(120, 190, 255), Material = Enum.Material.Neon, CanCollide = false})
-		-- 立式告示牌
-		local sp = part({Size = Vector3.new(12, 3.2, 0.5),
+			Color = Color3.fromRGB(35, 38, 46), Material = Enum.Material.Slate})
+
+		-- 霓虹外發光邊框
+		part({Size = Vector3.new(13.8, 0.25, 11.8),
+			Position = Vector3.new(boardC.X + px, padY - 0.1, boardC.Z + 3),
+			Color = padCol, Material = Enum.Material.Neon, CanCollide = false})
+
+		-- 沖天發光圓柱光柱（Light Pillar Beacon）
+		local beacon = Instance.new("Part")
+		beacon.Name = "VoteBeacon"
+		beacon.Shape = Enum.PartType.Cylinder
+		beacon.Size = Vector3.new(18, 10, 10)
+		beacon.CFrame = CFrame.new(Vector3.new(boardC.X + px, padY + 9, boardC.Z + 3)) * CFrame.Angles(0, 0, math.rad(90))
+		beacon.Color = padCol
+		beacon.Material = Enum.Material.Neon
+		beacon.Transparency = 0.76
+		beacon.CanCollide = false
+		beacon.Anchored = true
+		beacon.Parent = pad
+
+		local bLight = Instance.new("PointLight")
+		bLight.Color = padCol
+		bLight.Brightness = 1.6
+		bLight.Range = 16
+		bLight.Parent = beacon
+
+		-- 地面投票文字 SurfaceGui
+		local floorSg = Instance.new("SurfaceGui")
+		floorSg.Face = Enum.NormalId.Top
+		floorSg.CanvasSize = Vector2.new(400, 300)
+		floorSg.Parent = pad
+		local flTxt = Instance.new("TextLabel")
+		flTxt.Size = UDim2.new(1, 0, 1, 0)
+		flTxt.BackgroundTransparency = 1
+		flTxt.Font = Enum.Font.GothamBold
+		flTxt.Text = "★ 站此處投票 ★\n[ 踩入光柱 ]"
+		flTxt.TextColor3 = padCol
+		flTxt.TextStrokeColor3 = Color3.fromRGB(15, 15, 20)
+		flTxt.TextStrokeTransparency = 0.2
+		flTxt.TextScaled = true
+		flTxt.Parent = floorSg
+
+		-- 立體 3D 浮空告示看板（高掛於預覽地圖上方，無論從大廳何處均極為清晰！）
+		local bb = Instance.new("BillboardGui")
+		bb.Name = "VoteDisplayBB"
+		bb.Size = UDim2.new(0, 240, 0, 80)
+		bb.StudsOffset = Vector3.new(0, 9.8, 0)
+		bb.AlwaysOnTop = true
+		bb.MaxDistance = 90
+		bb.Parent = pad
+
+		local bbBox = Instance.new("Frame")
+		bbBox.Size = UDim2.new(1, 0, 1, 0)
+		bbBox.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
+		bbBox.BackgroundTransparency = 0.25
+		local bc = Instance.new("UICorner")
+		bc.CornerRadius = UDim.new(0, 10)
+		bc.Parent = bbBox
+		local bs = Instance.new("UIStroke")
+		bs.Color = padCol
+		bs.Thickness = 2
+		bs.Parent = bbBox
+		bbBox.Parent = bb
+
+		local titleLbl = Instance.new("TextLabel")
+		titleLbl.Size = UDim2.new(1, -8, 0.45, 0)
+		titleLbl.Position = UDim2.new(0, 4, 0, 2)
+		titleLbl.BackgroundTransparency = 1
+		titleLbl.Font = Enum.Font.GothamBold
+		titleLbl.TextColor3 = padCol
+		titleLbl.TextStrokeTransparency = 0.3
+		titleLbl.TextScaled = true
+		titleLbl.Text = "地圖投票"
+		titleLbl.Parent = bbBox
+
+		local voteLbl = Instance.new("TextLabel")
+		voteLbl.Size = UDim2.new(1, -8, 0.50, 0)
+		voteLbl.Position = UDim2.new(0, 4, 0.45, 0)
+		voteLbl.BackgroundTransparency = 1
+		voteLbl.Font = Enum.Font.GothamBlack
+		voteLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+		voteLbl.TextStrokeTransparency = 0.2
+		voteLbl.TextScaled = true
+		voteLbl.Text = "👤 0 票"
+		voteLbl.Parent = bbBox
+
+		table.insert(mapFloatingBillboards, bb)
+
+		-- 後方告示板
+		local sp = part({Size = Vector3.new(13, 3.2, 0.5),
 			Position = Vector3.new(boardC.X + px, padY + 2.1, boardC.Z + 3 - 6.2),
 			Color = Color3.fromRGB(35, 38, 48), Material = Enum.Material.SmoothPlastic})
 		local pg = Instance.new("SurfaceGui")
@@ -1575,7 +1805,7 @@ local function buildMapBoard()
 		lb.Font = Enum.Font.GothamBold
 		lb.Text = ""
 		lb.Parent = pg
-		table.insert(mapPads, {pad = pad, sign = lb, idx = -1, preview = nil :: any})
+		table.insert(mapPads, {pad = pad, sign = lb, idx = -1, preview = nil :: any, bbTitle = titleLbl, bbVote = voteLbl})
 	end
 end
 
@@ -1599,6 +1829,8 @@ local function pickCandidates()
 		mp.sign.Text = MAPS[mp.idx].name .. "\n👤 0"
 		mp.sign.TextColor3 = Color3.new(1, 1, 1)
 		mp.sign.BackgroundColor3 = Color3.fromRGB(20, 22, 28)
+		if mp.bbTitle then mp.bbTitle.Text = "【 " .. MAPS[mp.idx].name .. " 】" end
+		if mp.bbVote then mp.bbVote.Text = "👤 0 票" end
 	end
 end
 
@@ -1616,21 +1848,28 @@ task.spawn(function()
 	end
 end)
 
--- 站上哪塊板就投那張地圖（每 0.3 秒偵測一次）
+-- 站上哪塊板就投那張地圖（每 0.25 秒偵測一次，精準判定半徑覆蓋整個光圈光柱）
 task.spawn(function()
 	while true do
-		task.wait(0.3)
+		task.wait(0.25)
 		for _, plr in ipairs(Players:GetPlayers()) do
 			local c = plr.Character
 			local hrp = c and c:FindFirstChild("HumanoidRootPart")
-			if hrp and hrp.Position.Y < LOBBY_CENTER.Y + 12 and math.abs(hrp.Position.Z - (LOBBY_CENTER.Z - 16)) < 20 then
+			if hrp and math.abs(hrp.Position.Y - padY) < 7.5 then
 				for _, mp in ipairs(mapPads) do
 					if mp.idx >= 1 then
 						local p = mp.pad.Position
-						if math.abs(hrp.Position.X - p.X) <= PAD_HALF_X and math.abs(hrp.Position.Z - p.Z) <= PAD_HALF_Z
-							and hrp.Position.Y > p.Y - 1 and hrp.Position.Y < p.Y + 8 then
+						local d2D = Vector2.new(hrp.Position.X - p.X, hrp.Position.Z - p.Z).Magnitude
+						if d2D <= 7.2 then
 							if votes[plr] ~= mp.idx then
 								votes[plr] = mp.idx
+								send(plr, "toast", "🗳️ 已為 【" .. MAPS[mp.idx].name .. "】 投出一票！")
+								local chime = Instance.new("Sound")
+								chime.SoundId = "rbxassetid://1872746013"
+								chime.Volume = 1.1
+								chime.Parent = mp.pad
+								chime:Play()
+								game:GetService("Debris"):AddItem(chime, 1.5)
 							end
 							break
 						end
@@ -1657,6 +1896,14 @@ task.spawn(function()
 			if mp.idx >= 1 then
 				local n = tally[mp.idx] or 0
 				mp.sign.Text = MAPS[mp.idx].name .. "\n👤 " .. n
+				if mp.bbVote then
+					mp.bbVote.Text = "👤 " .. n .. " 票"
+					if bestN > 0 and n == bestN then
+						mp.bbVote.TextColor3 = Color3.fromRGB(255, 220, 80)
+					else
+						mp.bbVote.TextColor3 = Color3.fromRGB(255, 255, 255)
+					end
+				end
 				if bestN > 0 and n == bestN then
 					mp.sign.TextColor3 = Color3.fromRGB(255, 215, 90)
 					mp.sign.BackgroundColor3 = Color3.fromRGB(70, 55, 15)
@@ -2069,13 +2316,16 @@ spawnBot = function(idx: number, spawnPos: Vector3)
 	-- 智慧 AI 決策迴圈（防墜崖約束、近距離精準反彈殺向對手、安全時拾取技能盒子）
 	task.spawn(function()
 		local botSwingCd = 0
+		local currentTargetEntity: any = nil
+		local isTargetBot = false
+		local targetSwitchClock = 0
 
 		local function clampArena(target: Vector3): Vector3
 			local off = target - ARENA_CENTER
 			local flat = Vector3.new(off.X, 0, off.Z)
 			local maxR = ARENA_R - 14
 			if flat.Magnitude > maxR then
-				flat = flat.Unit * maxR
+					flat = flat.Unit * maxR
 			end
 			return ARENA_CENTER + Vector3.new(flat.X, 1.5, flat.Z)
 		end
@@ -2089,7 +2339,75 @@ spawnBot = function(idx: number, spawnPos: Vector3)
 
 			local now = os.clock()
 
-			-- 1. 優先級一：威脅感知——偵測 28 格內飛來的閃避球並揮刀精準反彈！
+			-- 0. 構建全場目標池（包含人類玩家與所有人機機器人）
+			local validTargets = {}
+			for p, a in pairs(alive) do
+				if a and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") then
+					local phum = p.Character.Humanoid :: Humanoid
+					if phum.Health > 0 then
+						table.insert(validTargets, {
+							entity = p,
+							isBot = false,
+							name = p.DisplayName,
+							pos = (p.Character.HumanoidRootPart :: BasePart).Position,
+							hum = phum,
+							hrp = p.Character.HumanoidRootPart :: BasePart
+						})
+					end
+				end
+			end
+			for _, ob in ipairs(activeBots) do
+				if ob ~= bot and ob.Parent and ob.PrimaryPart and ob:FindFirstChild("Humanoid") then
+					local ohum = ob.Humanoid :: Humanoid
+					if ohum.Health > 0 then
+						table.insert(validTargets, {
+							entity = ob,
+							isBot = true,
+							name = ob.Name,
+							pos = ob.PrimaryPart.Position,
+							hum = ohum,
+							hrp = ob.PrimaryPart
+						})
+					end
+				end
+			end
+
+			-- 目標選擇與鎖定（擬人化：維持鎖定 4~7 秒，避免鬼畜切換；且人機之間會高機率互相決鬥，防止圍毆單一玩家）
+			local targetObj = nil
+			if currentTargetEntity then
+				for _, vt in ipairs(validTargets) do
+					if vt.entity == currentTargetEntity then targetObj = vt; break end
+				end
+			end
+
+			if not targetObj or now > targetSwitchClock then
+				if #validTargets > 0 then
+					local botTargets = {}
+					local humanTargets = {}
+					for _, vt in ipairs(validTargets) do
+						if vt.isBot then table.insert(botTargets, vt) else table.insert(humanTargets, vt) end
+					end
+
+					-- 70% 機率人機互打決鬥，30% 機率打玩家（徹底解決全體人機圍攻玩家的體驗問題）
+					if #botTargets > 0 and (math.random() < 0.70 or #humanTargets == 0) then
+						targetObj = botTargets[math.random(1, #botTargets)]
+					elseif #humanTargets > 0 then
+						targetObj = humanTargets[math.random(1, #humanTargets)]
+					else
+						targetObj = validTargets[math.random(1, #validTargets)]
+					end
+					currentTargetEntity = targetObj.entity
+					isTargetBot = targetObj.isBot
+					targetSwitchClock = now + math.random(4, 7)
+				else
+					currentTargetEntity = nil
+				end
+			end
+
+			local targetPos = targetObj and targetObj.pos or nil
+			local targetDist = targetPos and (targetPos - bPos).Magnitude or 999
+
+			-- 1. 優先級一：威脅感知——偵測 28 格內飛來的閃避球並揮刀反彈（85% 成功率，15% 擬人化失誤）
 			local dangerBall: BasePart? = nil
 			local minBallDist = 28
 			for _, obj in ipairs(workspace:GetChildren()) do
@@ -2102,37 +2420,31 @@ spawnBot = function(idx: number, spawnPos: Vector3)
 				end
 			end
 
-			local nearestOpponentPos: Vector3? = nil
-			local minOppDist = 999
-			for p, a in pairs(alive) do
-				if a and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-					local pPos = (p.Character.HumanoidRootPart :: BasePart).Position
-					local d = (pPos - bPos).Magnitude
-					if d < minOppDist then
-						minOppDist = d
-						nearestOpponentPos = pPos
-					end
-				end
-			end
-
 			if dangerBall and now > botSwingCd then
 				botSwingCd = now + 0.55
-				local reflectDir = nearestOpponentPos and (nearestOpponentPos - bPos).Unit or -(dangerBall.Position - bPos).Unit
-				if hrp then
-					hrp.CFrame = CFrame.lookAt(bPos, bPos + Vector3.new(reflectDir.X, 0, reflectDir.Z))
-				end
-				-- 播放真人揮刀動作與劍氣！
-				botSlash()
-				local kind = dangerBall:GetAttribute("BallKind")
-				local t = kind and BALL_BY_ID[kind :: string] or nil
-				if t and reflectBall then
-					reflectBall(nil, dangerBall, reflectDir, t)
-					ballBurst(dangerBall.Position, Color3.fromRGB(255, 215, 60), 2.5)
+				-- 15% 擬人化失誤率：偶爾揮空或沒打中球，產生真實博弈感
+				local misses = (math.random() < 0.15)
+				if not misses then
+					local reflectDir = targetPos and (targetPos - bPos).Unit or -(dangerBall.Position - bPos).Unit
+					if hrp then
+						hrp.CFrame = CFrame.lookAt(bPos, bPos + Vector3.new(reflectDir.X, 0, reflectDir.Z))
+					end
+					botSlash()
+					local kind = dangerBall:GetAttribute("BallKind")
+					local t = kind and BALL_BY_ID[kind :: string] or nil
+					if t and reflectBall then
+						reflectBall(nil, dangerBall, reflectDir, t)
+						ballBurst(dangerBall.Position, Color3.fromRGB(255, 215, 60), 2.5)
+					end
+				else
+					if hrp then
+						hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(math.random(-45, 45)), 0)
+					end
 				end
 			else
-				-- 2. 優先級二：無迫近球時，尋找場上隨機掉落的神秘技能箱（MysteryBox）去撿
+				-- 2. 優先級二：爭奪場上隨機掉落的神秘技能箱（MysteryBox）
 				local closestBox: BasePart? = nil
-				local closestBoxDist = 65
+				local closestBoxDist = 60
 				for _, obj in ipairs(workspace:GetChildren()) do
 					if obj:IsA("BasePart") and obj.Name == "MysteryBox" and obj:GetAttribute("BoxActive") ~= false then
 						local dist = (obj.Position - bPos).Magnitude
@@ -2143,30 +2455,40 @@ spawnBot = function(idx: number, spawnPos: Vector3)
 					end
 				end
 
-				if closestBox and closestBoxDist > 4 and minOppDist > 20 then
+				if closestBox and closestBoxDist > 4 and targetDist > 18 then
 					hum:MoveTo(clampArena(closestBox.Position))
-				elseif nearestOpponentPos and minOppDist < 10 and now > botSwingCd then
-					-- 3. 優先級三：近戰攻擊——在 10 格內砍對手（真人揮砍動作 + 刀光）
-					botSwingCd = now + 0.65
+				elseif targetObj and targetDist <= 11 and now > botSwingCd then
+					-- 3. 優先級三：近戰連擊——在 11 格內斬殺對手（玩家或其他人機均可遭受打擊！）
+					botSwingCd = now + 0.60
 					if hrp then
-						hrp.CFrame = CFrame.lookAt(bPos, bPos + Vector3.new(nearestOpponentPos.X - bPos.X, 0, nearestOpponentPos.Z - bPos.Z))
+						hrp.CFrame = CFrame.lookAt(bPos, bPos + Vector3.new(targetPos.X - bPos.X, 0, targetPos.Z - bPos.Z))
 					end
 					botSlash()
-					for p, a in pairs(alive) do
-						if a and p.Character and p.Character:FindFirstChild("Humanoid") then
-							local phum = p.Character.Humanoid :: Humanoid
-							local d = ((p.Character.HumanoidRootPart :: BasePart).Position - bPos).Magnitude
-							if d < 10 then
-								phum:TakeDamage(25)
-								send(p, "hurt", {dmg = 25, attacker = bot.Name})
-								if phum.Health <= 0 then
-									broadcast("killfeed", {killer = bot.Name, victim = p.DisplayName, by = "knife"})
-								end
-							end
+
+					-- 判定打擊：目標是玩家
+					if not targetObj.isBot then
+						local p = targetObj.entity :: Player
+						local phum = targetObj.hum :: Humanoid
+						phum:TakeDamage(25)
+						send(p, "hurt", {dmg = 25, attacker = bot.Name})
+						ballBurst(targetObj.pos, Color3.fromRGB(255, 75, 75), 1.8)
+						if phum.Health <= 0 then
+							broadcast("killfeed", {killer = bot.Name, victim = p.DisplayName, by = "knife"})
+						end
+					else
+						-- 目標是其他人機（人機之間互砍決鬥！）
+						local ohum = targetObj.hum :: Humanoid
+						ohum:TakeDamage(25)
+						ballBurst(targetObj.pos, Color3.fromRGB(255, 120, 60), 1.8)
+						if ohum.Health <= 0 then
+							broadcast("killfeed", {killer = bot.Name, victim = targetObj.name, by = "knife"})
 						end
 					end
-				elseif nearestOpponentPos then
-					local approachTarget = nearestOpponentPos + Vector3.new(math.random(-4, 4), 0, math.random(-4, 4))
+				elseif targetObj then
+					-- 4. 戰術走位：蛇形微繞側翼突進（避免直線死衝，呈現忍者刺客步法）
+					local strafeAngle = (os.clock() * 2) % (math.pi * 2)
+					local strafeOffset = Vector3.new(math.cos(strafeAngle) * 6, 0, math.sin(strafeAngle) * 6)
+					local approachTarget = targetPos + strafeOffset
 					hum:MoveTo(clampArena(approachTarget))
 				else
 					local ang = math.random() * math.pi * 2
