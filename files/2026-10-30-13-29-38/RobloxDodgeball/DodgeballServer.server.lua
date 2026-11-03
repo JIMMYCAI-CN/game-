@@ -373,16 +373,18 @@ local function placeModel(tpl: Model, pos: Vector3, height: number, yaw: number)
 end
 
 local function buildLobby()
+	local oldIsland = workspace:FindFirstChild("Lobby")
+	if oldIsland then oldIsland:Destroy() end
 	local island = Instance.new("Model")
 	island.Name = "Lobby"
 
 	-- ============================================================
 	-- 典雅豪氣浮空仙島大廳（直徑 190 格，大氣開闊，白玉大理石+胡桃木+櫻花，絕非刺眼全黃金光）
 	-- ============================================================
-	local LY_BASE = 48.0      -- 基座底岩頂面
-	local LY_PLAZA = 50.0     -- 中央白玉廣場
-	local LY_DECK = 50.12     -- 東西側胡桃木迴廊步道
-	local LY_DAIS = 50.25     -- 創作者榮譽殿堂、神龕台座
+	local LY_BASE = -2.0      -- 基座底岩頂面 (Y = 48.0)
+	local LY_PLAZA = 0.0      -- 中央白玉廣場 (Y = 50.0)
+	local LY_DECK = 0.15      -- 東西側胡桃木迴廊步道 (Y = 50.15)
+	local LY_DAIS = 0.30      -- 創作者榮譽殿堂、神龕台座 (Y = 50.30)
 
 	-- 1. 浮空島岩體（層疊玄武岩基座，厚重大器）
 	part({Name = "CliffBase1", Size = Vector3.new(192, 28, 192), Position = LOBBY_CENTER + Vector3.new(0, LY_BASE - 14, 0),
@@ -695,6 +697,164 @@ local function buildLobby()
 
 	island.Parent = workspace
 	return {shopPrompt = shopPrompt, gachaPrompt = gachaPrompt}
+end
+
+local lobbyRefs = buildLobby()
+
+-- ------------------------------------------------------------
+-- 地圖選擇板（大廳：每輪從 15 張隨機抽 3 張，站上去 = 投那一張）
+-- ------------------------------------------------------------
+local ARENA_CENTER = Vector3.new(0, 0, -600)
+local ARENA_R = 62
+local mapCandidates: {number} = {}   -- 本輪開放投票的 3 張地圖編號
+local mapPads: {{pad: Part, sign: TextLabel, idx: number, preview: Model?}} = {}
+
+-- 迷你地圖預覽：照 buildArena 的形狀邏輯等比縮小，浮在板子上方當「預覽圖」
+local PREVIEW_S = 0.09
+local function buildMiniMap(mapIdx: number, center: Vector3): Model
+	local map = MAPS[mapIdx]
+	local shape: number = map.shape
+	local floorDef: any = FLOORS[map.floor]
+	local s = PREVIEW_S
+
+	local m = Instance.new("Model")
+	m.Name = "MapPreview"
+
+	local function pp(props: {[string]: any})
+		local p = Instance.new("Part")
+		p.Anchored = true; p.CanCollide = false; p.CastShadow = false
+		for k, v in pairs(props) do (p :: any)[k] = v end
+		p.Parent = m
+		return p
+	end
+
+	local function apotheim(): number
+		if shape == 1 then return ARENA_R end
+		if shape == 5 then return ARENA_R * 0.42 end
+		local n = (shape == 2 and 4) or (shape == 3 and 3) or 5
+		return ARENA_R * math.cos(math.pi / n)
+	end
+	local aIn = apotheim()
+
+	-- 核心地板
+	pp({Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, aIn * 2 * s, aIn * 2 * s),
+		CFrame = CFrame.new(center) * CFrame.Angles(0, 0, math.rad(90)),
+		Color = floorDef.color, Material = floorDef.material})
+
+	-- 多邊形邊帶 / 星星手臂＋霓虹外框
+	local edgeDefs: {{number}} = {}
+	if shape == 2 or shape == 3 or shape == 4 then
+		local n = (shape == 2 and 4) or (shape == 3 and 3) or 5
+		local edgeLen = 2 * ARENA_R * math.sin(math.pi / n)
+		for k = 0, n - 1 do
+			table.insert(edgeDefs, {math.rad(k * (360 / n) + 180 / n), edgeLen, aIn})
+		end
+	elseif shape == 5 then
+		for k = 0, 4 do
+			table.insert(edgeDefs, {math.rad(k * 72), aIn * 0.9, aIn})
+		end
+	end
+	for _, e in ipairs(edgeDefs) do
+		local midAng, edgeLen, innerR = e[1], e[2], e[3]
+		local bandLen = ARENA_R - innerR + 3
+		local dir = Vector3.new(math.cos(midAng), 0, math.sin(midAng))
+		local pos = center + dir * ((innerR + bandLen / 2 - 1.5) * s)
+		pp({Size = Vector3.new(edgeLen * s, 0.6, bandLen * s),
+			CFrame = CFrame.lookAt(pos, pos + dir),
+			Color = floorDef.color, Material = floorDef.material})
+		local npos = center + dir * (ARENA_R + 1) * s
+		pp({Size = Vector3.new(edgeLen * s, 0.25, 2.4 * s),
+			CFrame = CFrame.lookAt(npos, npos + dir),
+			Color = Color3.fromRGB(120, 190, 255), Material = Enum.Material.Neon})
+	end
+	-- 圓形的霓虹外圈
+	if shape == 1 then
+		pp({Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.25, ARENA_R * 2 * s + 0.5, ARENA_R * 2 * s + 0.5),
+			CFrame = CFrame.new(center) * CFrame.Angles(0, 0, math.rad(90)),
+			Color = Color3.fromRGB(120, 190, 255), Material = Enum.Material.Neon})
+	end
+	-- 示範障礙物（典雅白大理石柱與石台）
+	for i = 1, 4 do
+		local ang = math.rad(i * 90 + math.random(-20, 20))
+		local rr = aIn * 0.75 * s * (0.3 + math.random() * 0.7)
+		pp({Size = Vector3.new(0.8, 0.6 + math.random() * 0.6, 0.8),
+			Position = center + Vector3.new(math.cos(ang) * rr, 0.5, math.sin(ang) * rr),
+			Color = Color3.fromRGB(220, 225, 235), Material = Enum.Material.Marble})
+	end
+	m.Parent = workspace
+	return m
+end
+
+local boardC = LOBBY_CENTER + Vector3.new(0, 0, -38)
+local padY = LOBBY_CENTER.Y + 0.45
+local PAD_HALF_X, PAD_HALF_Z = 6, 5
+
+local function buildMapBoard()
+	-- 木框平台
+	part({Size = Vector3.new(60, 0.4, 34), Position = boardC + Vector3.new(0, 1.2, 0),
+		Color = Color3.fromRGB(72, 48, 36), Material = Enum.Material.WoodPlanks})
+	part({Size = Vector3.new(62, 1.2, 36), Position = boardC + Vector3.new(0, 0.4, 0),
+		Color = Color3.fromRGB(45, 48, 56), Material = Enum.Material.Slate})
+
+	-- 標題告示牌
+	local sign = part({Size = Vector3.new(28, 3.4, 0.6), Position = boardC + Vector3.new(0, 5.2, -16.2),
+		Color = Color3.fromRGB(36, 38, 46), Material = Enum.Material.Slate})
+	local sg = Instance.new("SurfaceGui")
+	sg.Face = Enum.NormalId.Back; sg.CanvasSize = Vector2.new(700, 100); sg.Parent = sign
+	local st = Instance.new("TextLabel")
+	st.Size = UDim2.new(1, 0, 1, 0); st.BackgroundTransparency = 1
+	st.Text = "🗺️ 地圖投票：請站上對應光環板進行投票"
+	st.TextColor3 = Color3.fromRGB(255, 230, 120); st.TextScaled = true
+	st.Font = Enum.Font.GothamBold; st.Parent = sg
+
+	-- 3 塊投票板（站上去投票）＋ 後方立式告示牌（名字＋票數）
+	for k = 1, 3 do
+		local px = -16 + (k - 1) * 16
+		local pad = part({Size = Vector3.new(12, 0.35, 10),
+			Position = Vector3.new(boardC.X + px, padY, boardC.Z + 3),
+			Color = Color3.fromRGB(90, 95, 110), Material = Enum.Material.SmoothPlastic})
+		-- 霓虹描邊
+		part({Size = Vector3.new(12.6, 0.2, 10.6),
+			Position = Vector3.new(boardC.X + px, padY - 0.2, boardC.Z + 3),
+			Color = Color3.fromRGB(120, 190, 255), Material = Enum.Material.Neon, CanCollide = false})
+		-- 立式告示牌
+		local sp = part({Size = Vector3.new(12, 3.2, 0.5),
+			Position = Vector3.new(boardC.X + px, padY + 2.1, boardC.Z + 3 - 6.2),
+			Color = Color3.fromRGB(35, 38, 48), Material = Enum.Material.SmoothPlastic})
+		local pg = Instance.new("SurfaceGui")
+		pg.Face = Enum.NormalId.Back; pg.CanvasSize = Vector2.new(480, 130); pg.Parent = sp
+		local lb = Instance.new("TextLabel")
+		lb.Size = UDim2.new(1, -8, 1, -8); lb.Position = UDim2.new(0, 4, 0, 4)
+		lb.BackgroundColor3 = Color3.fromRGB(20, 22, 28); lb.BackgroundTransparency = 0.15
+		lb.TextColor3 = Color3.new(1, 1, 1); lb.TextScaled = true
+		lb.Font = Enum.Font.GothamBold
+		lb.Text = ""
+		lb.Parent = pg
+		table.insert(mapPads, {pad = pad, sign = lb, idx = -1, preview = nil :: any})
+	end
+end
+
+buildMapBoard()
+
+-- 換一組候選地圖（3 張不重複）＋重建預覽
+local function pickCandidates()
+	local pool: {number} = {}
+	for i = 1, #MAPS do table.insert(pool, i) end
+	for i = #pool, 2, -1 do
+		local j = math.random(1, i)
+		pool[i], pool[j] = pool[j], pool[i]
+	end
+	mapCandidates = {pool[1], pool[2], pool[3]}
+	table.clear(votes)
+	for k = 1, 3 do
+		local mp = mapPads[k]
+		if mp.preview then mp.preview:Destroy(); mp.preview = nil end
+		mp.idx = mapCandidates[k]
+		mp.preview = buildMiniMap(mp.idx, Vector3.new(mp.pad.Position.X, padY + 6.2, mp.pad.Position.Z))
+		mp.sign.Text = MAPS[mp.idx].name .. "\n👤 0"
+		mp.sign.TextColor3 = Color3.new(1, 1, 1)
+		mp.sign.BackgroundColor3 = Color3.fromRGB(20, 22, 28)
+	end
 end
 
 pickCandidates()
@@ -2699,5 +2859,4 @@ task.spawn(function()
 	end)
 	print("[Dodgeball] 已接上 CharacterMoves 的 F 攻擊 ✔")
 end)
-
 
