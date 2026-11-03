@@ -966,6 +966,481 @@ local function buildLobby()
 	end
 
 
+
+	-- ------------------------------------------------------------
+	-- 1. 大廳隨機刷新金幣（3 枚隨機分佈，拾取 +10 金幣並於 10 秒後重刷）
+	-- ------------------------------------------------------------
+	local function setupLobbyCoins(islandModel: Model)
+		local coinFolder = Instance.new("Folder")
+		coinFolder.Name = "LobbyCoins"
+		coinFolder.Parent = islandModel
+
+		local SPOTS = {
+			Vector3.new(0, 52.4, -26),      -- 北側大門鳥居前
+			Vector3.new(38, 52.2, -18),     -- 東側櫻花樹下
+			Vector3.new(-38, 52.2, -18),    -- 西側花園長椅邊
+			Vector3.new(-48, 52.2, 26),     -- 西南小鳥林蔭道
+			Vector3.new(46, 52.2, 26),      -- 東南茶寮前木廊
+			Vector3.new(0, 52.6, 36),       -- 南側創作者榮譽壇前
+			Vector3.new(-22, 52.0, -10),    -- 西北庭園石燈旁
+			Vector3.new(22, 52.0, -10),     -- 東北庭園石燈旁
+		}
+
+		local activeCoins = {}
+
+		local function spawnOneCoin(pos: Vector3)
+			local coin = Instance.new("Part")
+			coin.Name = "LobbyCoin"
+			coin.Shape = Enum.PartType.Cylinder
+			coin.Size = Vector3.new(0.45, 2.2, 2.2)
+			coin.Color = Color3.fromRGB(255, 215, 0)
+			coin.Material = Enum.Material.Neon
+			coin.Anchored = true
+			coin.CanCollide = false
+			coin.CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, math.rad(90))
+
+			local sp = Instance.new("Sparkles")
+			sp.SparkleColor = Color3.fromRGB(255, 230, 80)
+			sp.Parent = coin
+
+			local bb = Instance.new("BillboardGui")
+			bb.Name = "CoinDisplay"
+			bb.Size = UDim2.new(0, 80, 0, 36)
+			bb.StudsOffset = Vector3.new(0, 1.8, 0)
+			bb.AlwaysOnTop = true
+			bb.MaxDistance = 60
+
+			local lbl = Instance.new("TextLabel")
+			lbl.Size = UDim2.new(1, 0, 1, 0)
+			lbl.BackgroundTransparency = 1
+			lbl.Font = Enum.Font.GothamBold
+			lbl.Text = "💰 +10"
+			lbl.TextColor3 = Color3.fromRGB(255, 235, 90)
+			lbl.TextStrokeColor3 = Color3.fromRGB(30, 20, 0)
+			lbl.TextStrokeTransparency = 0.2
+			lbl.TextScaled = true
+			lbl.Parent = bb
+			bb.Parent = coin
+
+			coin.Parent = coinFolder
+			activeCoins[coin] = true
+
+			local t0 = os.clock()
+			local spinConn
+			spinConn = RunService.Heartbeat:Connect(function()
+				if not coin.Parent then
+					if spinConn then spinConn:Disconnect() end
+					return
+				end
+				local dt = os.clock() - t0
+				coin.CFrame = CFrame.new(pos + Vector3.new(0, math.sin(dt * 3) * 0.25, 0))
+					* CFrame.Angles(0, dt * 2.5, math.rad(90))
+			end)
+
+			local collected = false
+			coin.Touched:Connect(function(hit)
+				if collected then return end
+				local ch = hit.Parent
+				local plr = ch and Players:GetPlayerFromCharacter(ch)
+				if plr and ch:FindFirstChild("Humanoid") and ch.Humanoid.Health > 0 then
+					collected = true
+					activeCoins[coin] = nil
+					if spinConn then spinConn:Disconnect() end
+
+					local chime = Instance.new("Sound")
+					chime.SoundId = "rbxassetid://1872746013"
+					chime.Volume = 1.2
+					chime.PlaybackSpeed = 1.1 + math.random() * 0.1
+					chime.Parent = coin
+					chime:Play()
+
+					local d = pd(plr)
+					d.coins += 10
+					syncLeader(plr)
+					send(plr, "coins", d.coins)
+					send(plr, "coinpopup", {pos = coin.Position, amt = 10})
+					send(plr, "toast", "💰 撿到了大廳幸運金幣！+10 金幣！")
+
+					ballBurst(coin.Position, Color3.fromRGB(255, 215, 0), 1.6)
+
+					coin.Transparency = 1
+					bb.Enabled = false
+					task.delay(1.5, function()
+						if coin.Parent then coin:Destroy() end
+					end)
+
+					task.delay(math.random(8, 12), function()
+						local avail = {}
+						for _, spot in ipairs(SPOTS) do
+							local near = false
+							for ac in pairs(activeCoins) do
+								if (ac.Position - spot).Magnitude < 4 then near = true; break end
+							end
+							if not near then table.insert(avail, spot) end
+						end
+						if #avail > 0 then
+							spawnOneCoin(avail[math.random(1, #avail)])
+						end
+					end)
+				end
+			end)
+		end
+
+		local shuffled = {}
+		for _, s in ipairs(SPOTS) do table.insert(shuffled, s) end
+		for i = #shuffled, 2, -1 do
+			local j = math.random(1, i)
+			shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+		end
+		for i = 1, math.min(3, #shuffled) do
+			spawnOneCoin(shuffled[i])
+		end
+	end
+
+	-- ------------------------------------------------------------
+	-- 2. 刺客小茶寮 & 咖啡店（購買飲品，飲用獲得幸運道具）
+	-- ------------------------------------------------------------
+	local function buildAssassinsCafe(islandModel: Model)
+		local cafe = Instance.new("Model")
+		cafe.Name = "AssassinsCafe"
+
+		local floorY = LOBBY_CENTER.Y + LY_DECK
+		local cf = CFrame.new(LOBBY_CENTER.X + 44, floorY, LOBBY_CENTER.Z + 38) * CFrame.Angles(0, math.rad(-135), 0)
+
+		local counter = Instance.new("Part")
+		counter.Name = "Counter"
+		counter.Size = Vector3.new(10.5, 3.4, 2.6)
+		counter.Color = Color3.fromRGB(72, 45, 30)
+		counter.Material = Enum.Material.WoodPlanks
+		counter.Anchored = true; counter.CanCollide = true
+		counter.CFrame = cf * CFrame.new(0, 1.7, 0)
+		counter.Parent = cafe
+
+		local counterTop = Instance.new("Part")
+		counterTop.Name = "CounterTop"
+		counterTop.Size = Vector3.new(11.2, 0.45, 3.2)
+		counterTop.Color = Color3.fromRGB(235, 230, 220)
+		counterTop.Material = Enum.Material.Marble
+		counterTop.Anchored = true; counterTop.CanCollide = true
+		counterTop.CFrame = cf * CFrame.new(0, 3.5, 0)
+		counterTop.Parent = cafe
+
+		local awning = Instance.new("Part")
+		awning.Name = "Awning"
+		awning.Size = Vector3.new(12.0, 0.4, 6.0)
+		awning.Color = Color3.fromRGB(150, 28, 28)
+		awning.Material = Enum.Material.SmoothPlastic
+		awning.Anchored = true; awning.CanCollide = true
+		awning.CFrame = cf * CFrame.new(0, 7.2, 0.8) * CFrame.Angles(math.rad(10), 0, 0)
+		awning.Parent = cafe
+
+		for _, xOff in ipairs({-5.2, 5.2}) do
+			for _, zOff in ipairs({-1.2, 1.2}) do
+				local post = Instance.new("Part")
+				post.Name = "Pillar"
+				post.Size = Vector3.new(0.5, 7.2, 0.5)
+				post.Color = Color3.fromRGB(55, 35, 22)
+				post.Material = Enum.Material.Wood
+				post.Anchored = true; post.CanCollide = true
+				post.CFrame = cf * CFrame.new(xOff, 3.6, zOff)
+				post.Parent = cafe
+			end
+		end
+
+		for _, xOff in ipairs({-2.6, 2.6}) do
+			local stool = Instance.new("Part")
+			stool.Name = "BarStool"
+			stool.Shape = Enum.PartType.Cylinder
+			stool.Size = Vector3.new(1.8, 1.6, 1.6)
+			stool.Color = Color3.fromRGB(90, 56, 38)
+			stool.Material = Enum.Material.Wood
+			stool.Anchored = true; stool.CanCollide = true
+			stool.CFrame = cf * CFrame.new(xOff, 0.9, 2.8) * CFrame.Angles(0, 0, math.rad(90))
+			stool.Parent = cafe
+
+			local stSeat = Instance.new("Seat")
+			stSeat.Name = "Seat"
+			stSeat.Size = Vector3.new(1.6, 0.2, 1.6)
+			stSeat.Transparency = 1; stSeat.Anchored = true; stSeat.CanCollide = false
+			stSeat.CFrame = cf * CFrame.new(xOff, 1.9, 2.8)
+			stSeat.Parent = cafe
+		end
+
+		local cup = Instance.new("Part")
+		cup.Name = "CoffeeCup"
+		cup.Shape = Enum.PartType.Cylinder
+		cup.Size = Vector3.new(0.8, 0.7, 0.7)
+		cup.Color = Color3.fromRGB(240, 240, 245)
+		cup.Material = Enum.Material.SmoothPlastic
+		cup.Anchored = true; cup.CanCollide = false
+		cup.CFrame = cf * CFrame.new(1.8, 4.0, 0) * CFrame.Angles(0, 0, math.rad(90))
+		cup.Parent = cafe
+
+		local steam = Instance.new("ParticleEmitter")
+		steam.Name = "Steam"
+		steam.Color = ColorSequence.new(Color3.fromRGB(230, 240, 255))
+		steam.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1.2)})
+		steam.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 1)})
+		steam.Lifetime = NumberRange.new(0.8, 1.5)
+		steam.Speed = NumberRange.new(0.8, 1.6)
+		steam.Rate = 6
+		steam.SpreadAngle = Vector2.new(15, 15)
+		steam.Acceleration = Vector3.new(0, 1.2, 0)
+		steam.Parent = cup
+
+		local signBoard = Instance.new("Part")
+		signBoard.Name = "SignBoard"
+		signBoard.Size = Vector3.new(7.0, 1.4, 0.3)
+		signBoard.Color = Color3.fromRGB(35, 25, 20)
+		signBoard.Material = Enum.Material.WoodPlanks
+		signBoard.Anchored = true; signBoard.CanCollide = false
+		signBoard.CFrame = cf * CFrame.new(0, 6.4, 1.4)
+		signBoard.Parent = cafe
+
+		local signBb = Instance.new("BillboardGui")
+		signBb.Name = "SignGui"
+		signBb.Size = UDim2.new(0, 240, 0, 64)
+		signBb.StudsOffset = Vector3.new(0, 0.5, 0.3)
+		signBb.AlwaysOnTop = true
+		signBb.MaxDistance = 55
+		signBb.Adornee = signBoard
+
+		local signLbl = Instance.new("TextLabel")
+		signLbl.Size = UDim2.new(1, 0, 0.55, 0)
+		signLbl.BackgroundTransparency = 1
+		signLbl.Font = Enum.Font.GothamBlack
+		signLbl.Text = "🍵 刺客茶寮 · Assassin's Café ☕"
+		signLbl.TextColor3 = Color3.fromRGB(255, 220, 100)
+		signLbl.TextStrokeColor3 = Color3.fromRGB(20, 20, 20)
+		signLbl.TextStrokeTransparency = 0.2
+		signLbl.TextScaled = true
+		signLbl.Parent = signBb
+
+		local signSub = Instance.new("TextLabel")
+		signSub.Size = UDim2.new(1, 0, 0.45, 0)
+		signSub.Position = UDim2.new(0, 0, 0.55, 0)
+		signSub.BackgroundTransparency = 1
+		signSub.Font = Enum.Font.GothamMedium
+		signSub.Text = "特調飲品 50 金幣 | 飲用送幸運箱神秘道具"
+		signSub.TextColor3 = Color3.fromRGB(200, 245, 255)
+		signSub.TextStrokeColor3 = Color3.fromRGB(20, 20, 20)
+		signSub.TextStrokeTransparency = 0.3
+		signSub.TextScaled = true
+		signSub.Parent = signBb
+		signBb.Parent = signBoard
+
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = "購買刺客特調飲品 (50 金幣)"
+		prompt.ObjectText = "🍵 刺客茶寮"
+		prompt.HoldDuration = 0.4
+		prompt.MaxActivationDistance = 10
+		prompt.KeyboardKeyCode = Enum.KeyCode.E
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = counterTop
+
+		local function giveDrinkTool(plr: Player)
+			local bp = plr:FindFirstChild("Backpack")
+			if not bp then return end
+
+			local FLAVORS = {
+				{name = "🍵 刺客特調抹茶", color = Color3.fromRGB(110, 195, 100)},
+				{name = "☕ 暗影濃縮咖啡", color = Color3.fromRGB(105, 65, 45)},
+				{name = "🧋 幻影黑糖奶茶", color = Color3.fromRGB(205, 150, 105)},
+			}
+			local flv = FLAVORS[math.random(1, #FLAVORS)]
+
+			local tool = Instance.new("Tool")
+			tool.Name = flv.name
+			tool.RequiresHandle = true
+			tool.CanBeDropped = false
+
+			local h = Instance.new("Part")
+			h.Name = "Handle"
+			h.Shape = Enum.PartType.Cylinder
+			h.Size = Vector3.new(0.9, 0.65, 0.65)
+			h.Color = flv.color
+			h.Material = Enum.Material.SmoothPlastic
+			h.CFrame = CFrame.Angles(0, 0, math.rad(90))
+			h.Parent = tool
+
+			local sp = Instance.new("Sparkles")
+			sp.SparkleColor = flv.color
+			sp.Parent = h
+
+			local drank = false
+			tool.Activated:Connect(function()
+				if drank then return end
+				drank = true
+
+				local ch = plr.Character
+				local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+				if hum and hum.Health > 0 then
+					hum.Health = math.min(hum.MaxHealth, hum.Health + 25)
+				end
+
+				local drinkSnd = Instance.new("Sound")
+				drinkSnd.SoundId = "rbxassetid://303102434"
+				drinkSnd.Volume = 1.3
+				drinkSnd.Parent = h
+				drinkSnd:Play()
+
+				if ch and ch:FindFirstChild("Head") then
+					local burst = Instance.new("ParticleEmitter")
+					burst.Color = ColorSequence.new(Color3.fromRGB(255, 140, 180), Color3.fromRGB(255, 230, 120))
+					burst.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.8), NumberSequenceKeypoint.new(1, 0)})
+					burst.Lifetime = NumberRange.new(0.6, 1.2)
+					burst.Speed = NumberRange.new(3, 7)
+					burst.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+					burst.Parent = ch.Head
+					burst:Emit(25)
+					game:GetService("Debris"):AddItem(burst, 1.5)
+				end
+
+				local d = pd(plr)
+				if #d.items < 2 then
+					local it = ITEMS[math.random(1, #ITEMS)]
+					table.insert(d.items, it.id)
+					send(plr, "itemget", {id = it.id, name = it.name, desc = it.desc, color = it.color, items = d.items})
+					send(plr, "toast", "✨ 喝完特調神清氣爽！獲得幸運道具【" .. it.name .. "】！")
+				else
+					d.coins += 40
+					syncLeader(plr)
+					send(plr, "coins", d.coins)
+					send(plr, "toast", "✨ 喝完特調！道具欄已滿，特調化作 40 金幣返還！")
+				end
+
+				task.delay(0.4, function()
+					if tool.Parent then tool:Destroy() end
+				end)
+			end)
+
+			tool.Parent = bp
+		end
+
+		prompt.Triggered:Connect(function(plr)
+			local d = pd(plr)
+			if d.coins < 50 then
+				send(plr, "toast", "❌ 金幣不足！特調飲品需要 50 金幣（大廳隨處可撿金幣哦）")
+				return
+			end
+			d.coins -= 50
+			syncLeader(plr)
+			send(plr, "coins", d.coins)
+			giveDrinkTool(plr)
+			send(plr, "toast", "🍵 購買成功！飲品已放入背包，點擊飲用可獲戰鬥神技道具！")
+		end)
+
+		cafe.Parent = islandModel
+		return cafe
+	end
+
+	-- ------------------------------------------------------------
+	-- 3. 練刀木人樁（大廳互動：揮砍彈簧晃動、爆火花與傷害飄字）
+	-- ------------------------------------------------------------
+	local function buildTrainingDummy(islandModel: Model)
+		local dummy = Instance.new("Model")
+		dummy.Name = "TrainingDummy"
+
+		local floorY = LOBBY_CENTER.Y + LY_DECK
+		local cf = CFrame.new(LOBBY_CENTER.X - 38, floorY, LOBBY_CENTER.Z - 36) * CFrame.Angles(0, math.rad(45), 0)
+
+		local base = Instance.new("Part")
+		base.Name = "DummyBase"
+		base.Shape = Enum.PartType.Cylinder
+		base.Size = Vector3.new(0.6, 4.2, 4.2)
+		base.Color = Color3.fromRGB(48, 50, 56)
+		base.Material = Enum.Material.Slate
+		base.Anchored = true; base.CanCollide = true
+		base.CFrame = cf * CFrame.new(0, 0.3, 0) * CFrame.Angles(0, 0, math.rad(90))
+		base.Parent = dummy
+
+		local torso = Instance.new("Part")
+		torso.Name = "Torso"
+		torso.Shape = Enum.PartType.Cylinder
+		torso.Size = Vector3.new(4.2, 2.2, 2.2)
+		torso.Color = Color3.fromRGB(165, 115, 75)
+		torso.Material = Enum.Material.Wood
+		torso.Anchored = true; torso.CanCollide = true
+		torso.CFrame = cf * CFrame.new(0, 2.7, 0) * CFrame.Angles(0, 0, math.rad(90))
+		torso.Parent = dummy
+		dummy.PrimaryPart = torso
+		dummy:SetAttribute("OrigCF", torso.CFrame)
+
+		local arm = Instance.new("Part")
+		arm.Name = "DummyArms"
+		arm.Size = Vector3.new(4.6, 0.45, 0.45)
+		arm.Color = Color3.fromRGB(140, 95, 60)
+		arm.Material = Enum.Material.Wood
+		arm.Anchored = false; arm.CanCollide = true
+		arm.CFrame = cf * CFrame.new(0, 3.4, 0)
+		local armWeld = Instance.new("WeldConstraint")
+		armWeld.Part0 = torso; armWeld.Part1 = arm; armWeld.Parent = torso
+		arm.Parent = dummy
+
+		local head = Instance.new("Part")
+		head.Name = "DummyHead"
+		head.Shape = Enum.PartType.Ball
+		head.Size = Vector3.new(1.8, 1.8, 1.8)
+		head.Color = Color3.fromRGB(180, 130, 85)
+		head.Material = Enum.Material.Wood
+		head.Anchored = false; head.CanCollide = true
+		head.CFrame = cf * CFrame.new(0, 5.2, 0)
+		local headWeld = Instance.new("WeldConstraint")
+		headWeld.Part0 = torso; headWeld.Part1 = head; headWeld.Parent = torso
+		head.Parent = dummy
+
+		local hat = Instance.new("Part")
+		hat.Name = "StrawHat"
+		hat.Size = Vector3.new(3.4, 0.4, 3.4)
+		hat.Color = Color3.fromRGB(220, 190, 120)
+		hat.Material = Enum.Material.Fabric
+		hat.Anchored = false; hat.CanCollide = false
+		hat.CFrame = cf * CFrame.new(0, 6.0, 0)
+		local hatWeld = Instance.new("WeldConstraint")
+		hatWeld.Part0 = torso; hatWeld.Part1 = hat; hatWeld.Parent = torso
+		hat.Parent = dummy
+
+		local bb = Instance.new("BillboardGui")
+		bb.Name = "TargetDisplay"
+		bb.Size = UDim2.new(0, 150, 0, 48)
+		bb.StudsOffset = Vector3.new(0, 2.6, 0)
+		bb.AlwaysOnTop = true
+		bb.MaxDistance = 50
+		bb.Adornee = head
+
+		local lbl = Instance.new("TextLabel")
+		lbl.Size = UDim2.new(1, 0, 0.6, 0)
+		lbl.BackgroundTransparency = 1
+		lbl.Font = Enum.Font.GothamBlack
+		lbl.Text = "🎯 練刀木人樁"
+		lbl.TextColor3 = Color3.fromRGB(255, 215, 60)
+		lbl.TextStrokeColor3 = Color3.fromRGB(25, 20, 10)
+		lbl.TextStrokeTransparency = 0.2
+		lbl.TextScaled = true
+		lbl.Parent = bb
+
+		local sub = Instance.new("TextLabel")
+		sub.Size = UDim2.new(1, 0, 0.4, 0)
+		sub.Position = UDim2.new(0, 0, 0.6, 0)
+		sub.BackgroundTransparency = 1
+		sub.Font = Enum.Font.GothamMedium
+		sub.Text = "砍我試試手感！連斬手感極爽"
+		sub.TextColor3 = Color3.fromRGB(225, 245, 255)
+		sub.TextStrokeColor3 = Color3.fromRGB(25, 20, 10)
+		sub.TextStrokeTransparency = 0.3
+		sub.TextScaled = true
+		sub.Parent = bb
+		bb.Parent = head
+
+		dummy.Parent = islandModel
+		return dummy
+	end
+
+	-- 呼叫大廳新活動元件
+	setupLobbyCoins(island)
+	buildAssassinsCafe(island)
+	buildTrainingDummy(island)
+
 	island.Parent = workspace
 	return {shopPrompt = shopPrompt, gachaPrompt = gachaPrompt}
 end
@@ -1469,8 +1944,7 @@ spawnBot = function(idx: number, spawnPos: Vector3)
 	end
 	hum.MaxHealth = 100
 	hum.Health = 100
-	hum.WalkSpeed = math.random(16, 20)
-	-- 使用 Roblox 原生官方血條，受傷才顯示，無多餘 UI 遮擋
+	hum.WalkSpeed = math.random(17, 21)
 	hum.DisplayName = bot.Name
 	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
 	hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.DisplayWhenDamaged
@@ -1485,11 +1959,108 @@ spawnBot = function(idx: number, spawnPos: Vector3)
 	local tool = makeKnifeTool(chosenSkin)
 	tool.Parent = bot
 
+	-- 確保武器與人機右手緊密鎖合
+	local rightHand = bot:FindFirstChild("RightHand") :: BasePart?
+	local handle = tool:FindFirstChild("Handle") :: BasePart?
+	if rightHand and handle then
+		local grip = rightHand:FindFirstChild("RightGrip")
+		if not grip then
+			local w = Instance.new("Motor6D")
+			w.Name = "RightGrip"
+			w.Part0 = rightHand
+			w.Part1 = handle
+			w.C0 = CFrame.new(0, -0.15, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+			w.Parent = rightHand
+		end
+	end
+
+	-- ============================================================
+	-- 人機全套真人動作系統（行走、奔跑、呼吸待機、三段連貫斬擊）
+	-- ============================================================
+	local animator = hum:FindFirstChildOfClass("Animator")
+	if not animator then
+		animator = Instance.new("Animator")
+		animator.Parent = hum
+	end
+
+	local function loadBotAnim(id: string, priority: Enum.AnimationPriority, looped: boolean): AnimationTrack?
+		local ok, res = pcall(function()
+			local a = Instance.new("Animation")
+			a.AnimationId = id
+			local trk = animator:LoadAnimation(a)
+			trk.Priority = priority
+			trk.Looped = looped
+			return trk
+		end)
+		if ok and res then return res :: any end
+		return nil
+	end
+
+	local idleTrack = loadBotAnim("rbxassetid://507766666", Enum.AnimationPriority.Idle, true)
+	local walkTrack = loadBotAnim("rbxassetid://507777826", Enum.AnimationPriority.Movement, true)
+	local runTrack = loadBotAnim("rbxassetid://507767714", Enum.AnimationPriority.Movement, true)
+
+	local slashTracks = {
+		loadBotAnim("rbxassetid://522635533", Enum.AnimationPriority.Action3, false),
+		loadBotAnim("rbxassetid://522638767", Enum.AnimationPriority.Action3, false),
+		loadBotAnim("rbxassetid://113532863616074", Enum.AnimationPriority.Action4, false),
+	}
+
+	if idleTrack then idleTrack:Play(0.1) end
+
+	-- 動態腳步步頻與跑步動作監聽
+	hum.Running:Connect(function(speed)
+		if speed > 18 then
+			if runTrack and not runTrack.IsPlaying then
+				if walkTrack then walkTrack:Stop(0.15) end
+				runTrack:Play(0.15)
+			end
+			if runTrack then runTrack:AdjustSpeed(math.clamp(speed / 20, 0.9, 1.4)) end
+		elseif speed > 0.8 then
+			if walkTrack and not walkTrack.IsPlaying then
+				if runTrack then runTrack:Stop(0.15) end
+				walkTrack:Play(0.15)
+			end
+			if walkTrack then walkTrack:AdjustSpeed(math.clamp(speed / 16, 0.85, 1.3)) end
+		else
+			if runTrack and runTrack.IsPlaying then runTrack:Stop(0.2) end
+			if walkTrack and walkTrack.IsPlaying then walkTrack:Stop(0.2) end
+			if idleTrack and not idleTrack.IsPlaying then idleTrack:Play(0.2) end
+		end
+	end)
+
+	local comboIdx = 1
+	local function botSlash()
+		local trk = slashTracks[comboIdx]
+		comboIdx = (comboIdx % #slashTracks) + 1
+		if trk then
+			trk:Play(0.05)
+		end
+		local slashSnd = Instance.new("Sound")
+		slashSnd.SoundId = "rbxassetid://9114223170"
+		slashSnd.Volume = 1.15
+		slashSnd.PlaybackSpeed = 0.98 + math.random() * 0.15
+		slashSnd.Parent = hrp
+		slashSnd:Play()
+		game:GetService("Debris"):AddItem(slashSnd, 1.2)
+
+		for _, p in ipairs(Players:GetPlayers()) do
+			send(p, "bot_swingfx", {
+				botName = bot.Name,
+				skin = chosenSkin,
+				pos = hrp and hrp.Position or bot:GetPivot().Position
+			})
+		end
+	end
+
 	bot.Parent = workspace
 	table.insert(activeBots, bot)
 
 	hum.Died:Connect(function()
 		broadcast("killfeed", {killer = "", victim = bot.Name, by = "died"})
+		if idleTrack then idleTrack:Stop(0.1) end
+		if walkTrack then walkTrack:Stop(0.1) end
+		if runTrack then runTrack:Stop(0.1) end
 		for i, b in ipairs(activeBots) do
 			if b == bot then table.remove(activeBots, i); break end
 		end
@@ -1500,7 +2071,6 @@ spawnBot = function(idx: number, spawnPos: Vector3)
 	task.spawn(function()
 		local botSwingCd = 0
 
-		-- 邊界約束：確保 AI 永遠活動在擂台邊界以內，絕不自己走出擂台掉落！
 		local function clampArena(target: Vector3): Vector3
 			local off = target - ARENA_CENTER
 			local flat = Vector3.new(off.X, 0, off.Z)
@@ -1533,7 +2103,6 @@ spawnBot = function(idx: number, spawnPos: Vector3)
 				end
 			end
 
-			-- 尋找最近的存活對手（玩家或不同隊的實體），反彈時把球打向對手！
 			local nearestOpponentPos: Vector3? = nil
 			local minOppDist = 999
 			for p, a in pairs(alive) do
@@ -1549,11 +2118,12 @@ spawnBot = function(idx: number, spawnPos: Vector3)
 
 			if dangerBall and now > botSwingCd then
 				botSwingCd = now + 0.55
-				-- 朝向目標：如果有對手就打向對手，否則打向反方向
 				local reflectDir = nearestOpponentPos and (nearestOpponentPos - bPos).Unit or -(dangerBall.Position - bPos).Unit
 				if hrp then
 					hrp.CFrame = CFrame.lookAt(bPos, bPos + Vector3.new(reflectDir.X, 0, reflectDir.Z))
 				end
+				-- 播放真人揮刀動作與劍氣！
+				botSlash()
 				local kind = dangerBall:GetAttribute("BallKind")
 				local t = kind and BALL_BY_ID[kind :: string] or nil
 				if t and reflectBall then
@@ -1575,18 +2145,21 @@ spawnBot = function(idx: number, spawnPos: Vector3)
 				end
 
 				if closestBox and closestBoxDist > 4 and minOppDist > 20 then
-					-- 前往撿技能盒子
 					hum:MoveTo(clampArena(closestBox.Position))
 				elseif nearestOpponentPos and minOppDist < 10 and now > botSwingCd then
-					-- 3. 優先級三：近戰攻擊——在 10 格內砍對手
+					-- 3. 優先級三：近戰攻擊——在 10 格內砍對手（真人揮砍動作 + 刀光）
 					botSwingCd = now + 0.65
+					if hrp then
+						hrp.CFrame = CFrame.lookAt(bPos, bPos + Vector3.new(nearestOpponentPos.X - bPos.X, 0, nearestOpponentPos.Z - bPos.Z))
+					end
+					botSlash()
 					for p, a in pairs(alive) do
 						if a and p.Character and p.Character:FindFirstChild("Humanoid") then
 							local phum = p.Character.Humanoid :: Humanoid
 							local d = ((p.Character.HumanoidRootPart :: BasePart).Position - bPos).Magnitude
 							if d < 10 then
 								phum:TakeDamage(25)
-								send(p, "hurt", {dmg = 25})
+								send(p, "hurt", {dmg = 25, attacker = bot.Name})
 								if phum.Health <= 0 then
 									broadcast("killfeed", {killer = bot.Name, victim = p.DisplayName, by = "knife"})
 								end
@@ -1594,11 +2167,9 @@ spawnBot = function(idx: number, spawnPos: Vector3)
 						end
 					end
 				elseif nearestOpponentPos then
-					-- 保持在擂台內向對手周邊周旋移動
 					local approachTarget = nearestOpponentPos + Vector3.new(math.random(-4, 4), 0, math.random(-4, 4))
 					hum:MoveTo(clampArena(approachTarget))
 				else
-					-- 擂台內隨機巡邏
 					local ang = math.random() * math.pi * 2
 					local dist = math.random(5, ARENA_R - 20)
 					hum:MoveTo(ARENA_CENTER + Vector3.new(math.cos(ang) * dist, 0, math.sin(ang) * dist))
@@ -1765,10 +2336,9 @@ local swingCd: {[Player]: number} = {}
 
 -- 球的判定寫在下方「球」段落，已在頂部宣告
 knifeHit = function(attacker: Player)
-	if not roundActive or not inRound[attacker] or not alive[attacker] then return end
 	local now = os.clock()
 	if (swingCd[attacker] or 0) > now then return end
-	swingCd[attacker] = now + 0.42
+	swingCd[attacker] = now + 0.38
 
 	local char = attacker.Character
 	if not char then return end
@@ -1776,17 +2346,46 @@ knifeHit = function(attacker: Player)
 	if not hrp then return end
 	local look = hrp.CFrame.LookVector
 
-	-- 通知客戶端播揮刀特效（滑鼠左鍵與 F 鍵都走這裡，F 鍵也能有滿特效）
 	local equipId = pd(attacker).equipped
 	local equipSkin = KNIFE_BY_ID[equipId] or KNIVES[1]
 	send(attacker, "swing", {skin = equipSkin.id, tier = equipSkin.tier or 1})
 
-	-- 讓其他玩家也看得到刀光
 	for _, other in ipairs(Players:GetPlayers()) do
 		if other ~= attacker then
 			send(other, "swingfx", {userId = attacker.UserId, skin = equipSkin.id, tier = equipSkin.tier or 1})
 		end
 	end
+
+	-- 練刀木人樁判定（大廳亦可隨心練刀測試打擊手感！）
+	local dummy = workspace:FindFirstChild("Lobby") and workspace.Lobby:FindFirstChild("TrainingDummy")
+	if dummy then
+		local dPart = dummy:FindFirstChild("Torso") or dummy.PrimaryPart
+		if dPart and (dPart.Position - hrp.Position).Magnitude <= 14 and look:Dot((dPart.Position - hrp.Position).Unit) > -0.15 then
+			local origCF = dummy:GetAttribute("OrigCF") :: CFrame?
+			if not origCF then
+				dummy:SetAttribute("OrigCF", dPart.CFrame)
+				origCF = dPart.CFrame
+			end
+			local hitBackCF = origCF * CFrame.Angles(math.rad(-18), 0, 0)
+			TweenService:Create(dPart, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {CFrame = hitBackCF}):Play()
+			task.delay(0.08, function()
+				TweenService:Create(dPart, TweenInfo.new(0.45, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {CFrame = origCF}):Play()
+			end)
+			local isCrit = math.random() < 0.35
+			local practiceDmg = math.random(25, 45) + (equipSkin.dmg or 25)
+			send(attacker, "hitsuccess", {
+				dmg = practiceDmg,
+				victim = "練刀木人樁",
+				pos = dPart.Position + Vector3.new(0, 1, 0),
+				isCrit = isCrit,
+				skin = equipSkin.id
+			})
+			ballBurst(dPart.Position + Vector3.new(0, 1.2, 0), equipSkin.color, 2.0)
+		end
+	end
+
+	-- 若不在回合中，大廳揮刀/練刀在此結束
+	if not roundActive or not inRound[attacker] or not alive[attacker] then return end
 
 	-- 砍人（傷害隨刀提升，判定距離放大至 12~18 格，覆蓋 180 度扇形）
 	local dmg = equipSkin.dmg or 25
@@ -1797,7 +2396,6 @@ knifeHit = function(attacker: Player)
 			local thrp = tchar and (tchar:FindFirstChild("HumanoidRootPart") :: BasePart?)
 			local thum = tchar and (tchar:FindFirstChild("Humanoid") :: Humanoid?)
 			if thrp and thum and thum.Health > 0 then
-				-- 無敵金鐘罩保護
 				if (thrp:GetAttribute("InvincibleUntil") or 0) > os.clock() then
 					continue
 				end
@@ -1805,7 +2403,14 @@ knifeHit = function(attacker: Player)
 				if off.Magnitude <= meleeReach and look:Dot(off.Unit) > -0.15 then
 					lastAttacker[target] = attacker
 					thum:TakeDamage(dmg)
-					send(attacker, "hitsuccess", {dmg = dmg, victim = target.DisplayName})
+					local isCrit = (dmg >= 45) or (math.random() < 0.25)
+					send(attacker, "hitsuccess", {
+						dmg = dmg,
+						victim = target.DisplayName,
+						pos = thrp.Position,
+						isCrit = isCrit,
+						skin = equipSkin.id
+					})
 					send(target, "hurt", {dmg = dmg, attacker = attacker.DisplayName})
 					ballBurst(thrp.Position, equipSkin.color, 2.0)
 
@@ -1844,7 +2449,14 @@ knifeHit = function(attacker: Player)
 				local off = bot.PrimaryPart.Position - hrp.Position
 				if off.Magnitude <= meleeReach and look:Dot(off.Unit) > -0.15 then
 					bHum:TakeDamage(dmg)
-					send(attacker, "hitsuccess", {dmg = dmg, victim = bot.Name})
+					local isCrit = (dmg >= 45) or (math.random() < 0.25)
+					send(attacker, "hitsuccess", {
+						dmg = dmg,
+						victim = bot.Name,
+						pos = bot.PrimaryPart.Position,
+						isCrit = isCrit,
+						skin = equipSkin.id
+					})
 					ballBurst(bot.PrimaryPart.Position, equipSkin.color, 2.0)
 					if bHum.Health <= 0 then
 						local kd = pd(attacker)

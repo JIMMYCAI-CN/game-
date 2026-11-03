@@ -33,8 +33,8 @@ local CONFIG = {
 
 	-- 速度
 	WalkSpeed = 16,          -- 一般走路速度
-	RunSpeed = 44,           -- 跑步（衝刺）速度（加快奔馳快感）
-	SlideSpeed = 64,         -- 滑剷初速
+	RunSpeed = 52,           -- 跑步（衝刺）速度（加快奔馳快感）
+	SlideSpeed = 72,         -- 滑剷初速
 
 	-- 畫面衝刺感（數值越大，畫面越「拉長」）
 	BaseFov = 70,
@@ -53,7 +53,7 @@ local CONFIG = {
 	DoubleJumpMaxCount = 1,    -- 1 = 二段跳，2 = 三段跳
 
 	-- 快閃（E，向前）
-	DashDistance = 20,
+	DashDistance = 28,
 	DashDuration = 0.18,
 	DashCooldown = 1.5,
 	DashStopBuffer = 1.5,      -- 前方有牆時停在牆前幾格

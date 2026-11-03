@@ -18,15 +18,15 @@ local rng = Random.new()
 -- 刀皮膚 → 特效設定（越貴越華麗）
 -- ------------------------------------------------------------
 local THEMES = {
-	steel     = {color = Color3.fromRGB(232, 240, 255), color2 = Color3.fromRGB(150, 168, 195), shake = 0.45, arc = 0.95, extra = "none"},
-	obsidian  = {color = Color3.fromRGB(165, 115, 255), color2 = Color3.fromRGB(60, 40, 90),   shake = 0.55, arc = 1.00, extra = "smoke"},
-	thunder   = {color = Color3.fromRGB(120, 195, 255), color2 = Color3.fromRGB(245, 250, 255), shake = 0.70, arc = 1.05, extra = "bolt"},
-	sakura    = {color = Color3.fromRGB(255, 165, 210), color2 = Color3.fromRGB(255, 235, 245), shake = 0.60, arc = 1.10, extra = "petal"},
-	frost     = {color = Color3.fromRGB(170, 235, 255), color2 = Color3.fromRGB(255, 255, 255), shake = 0.65, arc = 1.12, extra = "ice"},
-	astra     = {color = Color3.fromRGB(130, 255, 190), color2 = Color3.fromRGB(255, 255, 210), shake = 0.72, arc = 1.18, extra = "rune"},
-	hydra     = {color = Color3.fromRGB(140, 240, 110), color2 = Color3.fromRGB(40, 120, 40),   shake = 0.78, arc = 1.22, extra = "venom"},
-	blueflame = {color = Color3.fromRGB(90, 180, 255), color2 = Color3.fromRGB(220, 245, 255),  shake = 0.88, arc = 1.28, extra = "flame"},
-	phoenix   = {color = Color3.fromRGB(255, 155, 60), color2 = Color3.fromRGB(255, 240, 170),  shake = 1.05, arc = 1.36, extra = "phoenix"},
+	steel     = {color = Color3.fromRGB(232, 240, 255), color2 = Color3.fromRGB(150, 168, 195), shake = 0.95, arc = 1.00, extra = "none"},
+	obsidian  = {color = Color3.fromRGB(165, 115, 255), color2 = Color3.fromRGB(60, 40, 90),   shake = 1.15, arc = 1.08, extra = "smoke"},
+	thunder   = {color = Color3.fromRGB(120, 195, 255), color2 = Color3.fromRGB(245, 250, 255), shake = 1.35, arc = 1.15, extra = "bolt"},
+	sakura    = {color = Color3.fromRGB(255, 165, 210), color2 = Color3.fromRGB(255, 235, 245), shake = 1.30, arc = 1.18, extra = "petal"},
+	frost     = {color = Color3.fromRGB(170, 235, 255), color2 = Color3.fromRGB(255, 255, 255), shake = 1.50, arc = 1.22, extra = "ice"},
+	astra     = {color = Color3.fromRGB(130, 255, 190), color2 = Color3.fromRGB(255, 255, 210), shake = 1.70, arc = 1.28, extra = "rune"},
+	hydra     = {color = Color3.fromRGB(140, 240, 110), color2 = Color3.fromRGB(40, 120, 40),   shake = 1.85, arc = 1.32, extra = "venom"},
+	blueflame = {color = Color3.fromRGB(90, 180, 255), color2 = Color3.fromRGB(220, 245, 255),  shake = 2.10, arc = 1.40, extra = "flame"},
+	phoenix   = {color = Color3.fromRGB(255, 155, 60), color2 = Color3.fromRGB(255, 240, 170),  shake = 2.50, arc = 1.50, extra = "phoenix"},
 }
 
 local function themeOf(skinId)
@@ -542,46 +542,154 @@ plr.ChildAdded:Connect(function(c)
 	end
 end)
 
+
 -- ------------------------------------------------------------
--- 球命中反饋
+-- 3D 浮空傷害跳字 (Floating Damage Numbers)
 -- ------------------------------------------------------------
+local function popupDamageNumber(worldPos: Vector3?, text: string, col: Color3, isCrit: boolean?)
+	local cam = workspace.CurrentCamera
+	if not cam then return end
+	local pos = worldPos or (cam.CFrame.Position + cam.CFrame.LookVector * 10)
+
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "DamagePopup"
+	bb.Size = isCrit and UDim2.new(0, 160, 0, 50) or UDim2.new(0, 120, 0, 40)
+	bb.StudsOffsetWorldSpace = pos + Vector3.new((rng:NextNumber() - 0.5) * 1.2, 1.8, (rng:NextNumber() - 0.5) * 1.2)
+	bb.AlwaysOnTop = true
+	bb.MaxDistance = 120
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, 0, 1, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Font = isCrit and Enum.Font.GothamBlack or Enum.Font.GothamBold
+	lbl.Text = text
+	lbl.TextColor3 = col
+	lbl.TextScaled = true
+	lbl.TextStrokeColor3 = Color3.fromRGB(20, 20, 25)
+	lbl.TextStrokeTransparency = 0.1
+	lbl.Parent = bb
+
+	local anchor = Instance.new("Part")
+	anchor.Size = Vector3.new(0.1, 0.1, 0.1)
+	anchor.Transparency = 1
+	anchor.CanCollide = false
+	anchor.Anchored = true
+	anchor.CFrame = CFrame.new(pos)
+	anchor.Parent = workspace
+
+	bb.Adornee = anchor
+	bb.Parent = plr:WaitForChild("PlayerGui")
+
+	local floatDur = isCrit and 0.85 or 0.65
+	local targetOffset = bb.StudsOffsetWorldSpace + Vector3.new(0, 3.2, 0)
+	TweenService:Create(bb, TweenInfo.new(floatDur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		StudsOffsetWorldSpace = targetOffset
+	}):Play()
+
+	task.delay(floatDur * 0.5, function()
+		TweenService:Create(lbl, TweenInfo.new(floatDur * 0.5, Enum.EasingStyle.Linear), {
+			TextTransparency = 1,
+			TextStrokeTransparency = 1
+		}):Play()
+	end)
+
+	game:GetService("Debris"):AddItem(anchor, floatDur + 0.05)
+	game:GetService("Debris"):AddItem(bb, floatDur + 0.05)
+end
+
+-- ------------------------------------------------------------
+-- 人物受擊紅白閃爍高光 (Character Hit Flash Highlight)
+-- ------------------------------------------------------------
+local function flashCharacter(char: Model?)
+	if not char or not char:IsA("Model") then return end
+	local hl = Instance.new("Highlight")
+	hl.Name = "HitFlashHighlight"
+	hl.FillColor = Color3.fromRGB(255, 45, 45)
+	hl.OutlineColor = Color3.new(1, 1, 1)
+	hl.FillTransparency = 0.2
+	hl.OutlineTransparency = 0
+	hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	hl.Adornee = char
+	hl.Parent = char
+
+	TweenService:Create(hl, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		FillTransparency = 1,
+		OutlineTransparency = 1
+	}):Play()
+
+	game:GetService("Debris"):AddItem(hl, 0.18)
+end
+
+-- ------------------------------------------------------------
+-- 打擊頓幀 (Hit-Stop / Micro Freeze 40ms)
+-- ------------------------------------------------------------
+local function hitStop(dur: number?)
+	local ch = plr.Character
+	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+	if not hum then return end
+	local originalSpeed = hum.WalkSpeed
+	hum.WalkSpeed = 4
+	task.delay(dur or 0.038, function()
+		if hum and hum.Parent then
+			hum.WalkSpeed = originalSpeed
+		end
+	end)
+end
+
+-- ------------------------------------------------------------
+-- 斬擊爆裂火花噴泉 (Slash Impact Sparks)
+-- ------------------------------------------------------------
+local function slashImpactSparks(hitPos: Vector3, theme: any, isCrit: boolean?)
+	ringWave(hitPos, theme.color, isCrit and 4.2 or 3.0, 0.26)
+	ringWave(hitPos, Color3.new(1, 1, 1), isCrit and 2.5 or 1.8, 0.20)
+	particleBurst(hitPos, theme.color, isCrit and 36 or 24, 60, 0.55, 0.45)
+	particleBurst(hitPos, Color3.new(1, 1, 1), isCrit and 20 or 12, 75, 0.45, 0.35)
+	debrisFly(hitPos, theme.color, isCrit and 10 or 6, 45)
+end
+
 local function ballImpact(pos, theme, kind, coin, ballName)
-	-- 金屬撞擊與清脆彈反打擊音效
+	-- 金屬撞擊與超音速彈反爆響音效
 	local hitSnd = Instance.new("Sound")
-	hitSnd.SoundId = "rbxassetid://5665637213"
-	hitSnd.Volume = 1.35
-	hitSnd.PlaybackSpeed = 1.02 + rng:NextNumber() * 0.16
+	hitSnd.SoundId = "rbxassetid://9114223170"
+	hitSnd.Volume = 1.45
+	hitSnd.PlaybackSpeed = 1.05 + rng:NextNumber() * 0.15
 	hitSnd.Parent = workspace.CurrentCamera
 	hitSnd:Play()
 	game:GetService("Debris"):AddItem(hitSnd, 1.5)
 
 	local clinkSnd = Instance.new("Sound")
-	clinkSnd.SoundId = "rbxassetid://9069609200"
-	clinkSnd.Volume = 0.9
+	clinkSnd.SoundId = "rbxassetid://9114223847"
+	clinkSnd.Volume = 1.2
 	clinkSnd.PlaybackSpeed = 1.15
 	clinkSnd.Parent = workspace.CurrentCamera
 	clinkSnd:Play()
 	game:GetService("Debris"):AddItem(clinkSnd, 1.5)
 
+	hitStop(0.04)
+
 	if kind == "destroy" then
-		ringWave(pos, theme.color, 3.4, 0.34)
-		ringWave(pos, Color3.new(1, 1, 1), 1.9, 0.22)
-		particleBurst(pos, theme.color, 26, 46, 0.6, 0.6)
-		particleBurst(pos, Color3.new(1, 1, 1), 10, 60, 0.4, 0.35)
-		debrisFly(pos, theme.color, 6, 34)
-		screenFlash(theme.color, 0.20, 0.16)
+		ringWave(pos, theme.color, 4.2, 0.38)
+		ringWave(pos, Color3.new(1, 1, 1), 2.5, 0.25)
+		particleBurst(pos, theme.color, 38, 55, 0.6, 0.6)
+		particleBurst(pos, Color3.new(1, 1, 1), 18, 70, 0.45, 0.4)
+		debrisFly(pos, theme.color, 8, 42)
+		screenFlash(theme.color, 0.25, 0.18)
 		speedLines(theme.color)
-		addShake(theme.shake * 1.5, 0.22)
-		punchIn(1.05)
-		hitText("✦ 砍碎" .. (ballName and ("「" .. ballName .. "」") or ""), theme.color, coin)
+		addShake(theme.shake * 1.8, 0.26)
+		punchIn(1.35)
+		popupDamageNumber(pos, "💥 碎球!", theme.color, true)
+		hitText("⚔️ 砍碎" .. (ballName and (" " .. ballName) or ""), theme.color, coin)
 	else
-		ringWave(pos, theme.color, 2.6, 0.26)
-		particleBurst(pos, Color3.new(1, 1, 1), 18, 62, 0.45, 0.4)
-		particleBurst(pos, theme.color, 12, 40, 0.4, 0.35)
-		screenFlash(Color3.new(1, 1, 1), 0.14, 0.12)
-		addShake(theme.shake * 1.05, 0.16)
-		punchIn(0.65)
-		hitText("✦ 反彈", theme.color, coin)
+		ringWave(pos, theme.color, 3.2, 0.28)
+		ringWave(pos, Color3.new(1, 1, 1), 1.8, 0.20)
+		particleBurst(pos, Color3.new(1, 1, 1), 24, 70, 0.5, 0.45)
+		particleBurst(pos, theme.color, 18, 50, 0.45, 0.4)
+		screenFlash(Color3.new(1, 1, 1), 0.18, 0.14)
+		speedLines(theme.color)
+		addShake(theme.shake * 1.35, 0.20)
+		punchIn(0.95)
+		popupDamageNumber(pos, "⚡ 反彈!", theme.color, false)
+		hitText("⚡ 完美反彈", theme.color, coin)
 	end
 end
 
@@ -589,7 +697,6 @@ Net.OnClientEvent:Connect(function(msg)
 	if type(msg) ~= "table" then return end
 	if msg.act == "swing" then
 		local d = msg.data or {}
-		-- 伺服器回音（F 鍵攻擊）：本機已播過就不重播
 		if os.clock() - lastPlay > 0.16 then
 			playSwing(d.skin)
 		end
@@ -602,13 +709,20 @@ Net.OnClientEvent:Connect(function(msg)
 			local cf = baseCFOf((hrp :: BasePart).CFrame, 1)
 			swingFX(themeOf(d.skin), cf, (hrp :: BasePart).Position, 1)
 		end
+	elseif msg.act == "bot_swingfx" then
+		local d = msg.data or {}
+		local b = workspace:FindFirstChild(tostring(d.botName))
+		local hrp = b and b:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			local cf = baseCFOf((hrp :: BasePart).CFrame, 1)
+			swingFX(themeOf(d.skin), cf, (hrp :: BasePart).Position, 1)
+		end
 	elseif msg.act == "ballhit" then
 		local d = msg.data or {}
 		local pos = d.pos
 		if typeof(pos) ~= "Vector3" then return end
 		local skin = d.skin
 		if not skin then
-			-- 沒有帶皮膚就讀自己手上的刀
 			local char = plr.Character
 			local tool = char and char:FindFirstChildOfClass("Tool")
 			skin = tool and skinOfTool(tool) or "steel"
@@ -616,20 +730,59 @@ Net.OnClientEvent:Connect(function(msg)
 		ballImpact(pos, themeOf(skin), d.kind, d.coin, d.name)
 	elseif msg.act == "hitsuccess" then
 		local d = msg.data or {}
-		addShake(0.65, 0.18)
-		punchIn(0.85)
+		local theme = themeOf(d.skin)
+		local isCrit = d.isCrit or (d.dmg and d.dmg >= 45)
+		local hitPos = d.pos and Vector3.new(d.pos.X, d.pos.Y, d.pos.Z) or (plr.Character and (plr.Character:GetPivot().Position + Vector3.new(0, 1.5, 0)))
+
+		addShake(isCrit and (theme.shake * 1.5) or (theme.shake * 1.1), 0.22)
+		punchIn(isCrit and 1.3 or 0.85)
+		screenFlash(isCrit and Color3.fromRGB(255, 230, 160) or Color3.fromRGB(255, 255, 255), isCrit and 0.28 or 0.18, 0.12)
+		hitStop(isCrit and 0.05 or 0.038)
+
+		slashImpactSparks(hitPos, theme, isCrit)
+
+		if d.victim then
+			for _, m in ipairs(workspace:GetChildren()) do
+				if m:IsA("Model") and (m.Name == d.victim or (m:FindFirstChild("Humanoid") and m.Humanoid.DisplayName == d.victim)) then
+					flashCharacter(m)
+					break
+				end
+			end
+		end
+
+		local dmgText = "-" .. tostring(d.dmg or 25) .. (isCrit and " 暴擊!" or "")
+		popupDamageNumber(hitPos, dmgText, isCrit and Color3.fromRGB(255, 215, 50) or Color3.fromRGB(255, 85, 55), isCrit)
+
 		local hitSnd = Instance.new("Sound")
-		hitSnd.SoundId = "rbxassetid://5665637213"
-		hitSnd.Volume = 1.2
-		hitSnd.PlaybackSpeed = 1.1
+		hitSnd.SoundId = isCrit and "rbxassetid://9114223170" or "rbxassetid://5665637213"
+		hitSnd.Volume = isCrit and 1.6 or 1.3
+		hitSnd.PlaybackSpeed = 0.98 + rng:NextNumber() * 0.15
 		hitSnd.Parent = workspace.CurrentCamera
 		hitSnd:Play()
-		game:GetService("Debris"):AddItem(hitSnd, 1.2)
-		hitText("⚔ 命中 " .. tostring(d.victim or "敵人") .. " -" .. tostring(d.dmg or 25), Color3.fromRGB(255, 200, 60))
+		game:GetService("Debris"):AddItem(hitSnd, 1.5)
+
+		if isCrit then
+			local critBoom = Instance.new("Sound")
+			critBoom.SoundId = "rbxassetid://281444251"
+			critBoom.Volume = 1.4
+			critBoom.Parent = workspace.CurrentCamera
+			critBoom:Play()
+			game:GetService("Debris"):AddItem(critBoom, 1.5)
+		end
+
+		hitText("⚔️ 命中 " .. tostring(d.victim or "敵人") .. " " .. dmgText, isCrit and Color3.fromRGB(255, 225, 70) or Color3.fromRGB(255, 190, 60))
 	elseif msg.act == "hurt" then
 		local d = msg.data or {}
-		addShake(0.85, 0.22)
-		screenFlash(Color3.fromRGB(255, 45, 45), 0.35, 0.22)
+		addShake(1.1, 0.24)
+		screenFlash(Color3.fromRGB(255, 45, 45), 0.38, 0.22)
+		if plr.Character then
+			flashCharacter(plr.Character)
+			popupDamageNumber(plr.Character:GetPivot().Position + Vector3.new(0, 1.5, 0), "-" .. tostring(d.dmg or 25), Color3.fromRGB(255, 50, 50), false)
+		end
 		hitText("💔 受傷 -" .. tostring(d.dmg or 25) .. (d.attacker and (" (" .. d.attacker .. ")") or ""), Color3.fromRGB(255, 80, 80))
+	elseif msg.act == "coinpopup" then
+		local d = msg.data or {}
+		local p = d.pos and Vector3.new(d.pos.X, d.pos.Y, d.pos.Z) or (plr.Character and plr.Character:GetPivot().Position)
+		popupDamageNumber(p, "+" .. tostring(d.amt or 10) .. " 💰", Color3.fromRGB(255, 220, 60), true)
 	end
 end)
