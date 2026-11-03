@@ -84,6 +84,7 @@ local votes: {[Player]: number} = {}      -- 每個玩家投的地圖編號
 local currentMap = 1                      -- 本回合用的地圖
 local slowUntil: {[Player]: number} = {}  -- 減速道具結束時間
 local speedUntil: {[Player]: number} = {} -- 疾風藥水結束時間
+local spectating: {[Player]: boolean} = {} -- 觀戰名單：不進本回合
 
 -- ------------------------------------------------------------
 -- RemoteEvent（單一通道，act 欄位區分動作）
@@ -1113,7 +1114,7 @@ part({Name = "Ocean", Size = Vector3.new(2000, 4, 2000), Position = ARENA_CENTER
 local roundActive = false
 local inRound: {[Player]: boolean} = {}
 local alive: {[Player]: boolean} = {}
-local spectating: {[Player]: boolean} = {}   -- 玩家按「不參加」→ 本回合不傳送進場
+-- 觀戰名單 spectating 聲明已提前至頂部
 local lastAttacker: {[Player]: Player} = {}
 local roundTag = 0
 
