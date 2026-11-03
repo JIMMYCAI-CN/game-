@@ -1472,60 +1472,296 @@ local function ballBurst(pos: Vector3, color: Color3, scale: number)
 end
 
 -- 球的外觀：發光 / 拖尾 / 火花
+-- 輔助：附加裝飾組件（無碰撞/無質量/跟隨本體）
+local function attachVisualPart(parent: BasePart, props: {[string]: any}): BasePart
+	local p = Instance.new("Part")
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.Anchored = false
+	for k, v in pairs(props) do
+		if k == "CFrame" or k == "Position" then
+			-- set below
+		else
+			(p :: any)[k] = v
+		end
+	end
+	if props.CFrame then
+		p.CFrame = props.CFrame
+	elseif props.Position then
+		p.Position = props.Position
+	else
+		p.CFrame = parent.CFrame
+	end
+	p.Parent = parent
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = parent
+	w.Part1 = p
+	w.Parent = p
+	return p
+end
+
+-- 球的外觀：9 種球各有獨特幾何造型、專屬粒子與視覺特效
 local function makeBallLook(ball: BasePart, t)
+	local size = ball.Size.X
+	local col = t.color
+	local edgeCol = t.edge or col
+
+	-- 1. 基礎點光源
 	if t.glow and t.glow > 0 then
 		local light = Instance.new("PointLight")
-		light.Color = t.color
+		light.Color = col
 		light.Brightness = t.glow * 2.2
-		light.Range = t.size * 2.6
+		light.Range = size * 2.8
 		light.Parent = ball
 	end
+
+	-- 2. 基礎拖尾
 	if t.trail then
 		local a0 = Instance.new("Attachment")
-		a0.Position = Vector3.new(0, t.size * 0.42, 0)
+		a0.Position = Vector3.new(0, size * 0.45, 0)
 		a0.Parent = ball
 		local a1 = Instance.new("Attachment")
-		a1.Position = Vector3.new(0, -t.size * 0.42, 0)
+		a1.Position = Vector3.new(0, -size * 0.45, 0)
 		a1.Parent = ball
 		local tr = Instance.new("Trail")
 		tr.Attachment0 = a0
 		tr.Attachment1 = a1
-		tr.Color = ColorSequence.new(t.color, t.edge)
-		tr.Lifetime = 0.32
-		tr.Texture = ""
+		tr.Color = ColorSequence.new(col, edgeCol)
+		tr.Lifetime = t.id == "quick" and 0.48 or 0.28
 		tr.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.2),
+			NumberSequenceKeypoint.new(0, 0.15),
 			NumberSequenceKeypoint.new(1, 1),
 		})
 		tr.WidthScale = NumberSequence.new({
 			NumberSequenceKeypoint.new(0, 1),
-			NumberSequenceKeypoint.new(1, 0.12),
+			NumberSequenceKeypoint.new(1, 0.08),
 		})
 		tr.Parent = ball
 	end
-	if t.spark then
+
+	-- 3. 專屬球種幾何造型與專屬粒子
+	if t.id == "standard" then
+		-- 【標準球】赤道霓虹光環：旋轉薄圓盤環繞
+		attachVisualPart(ball, {
+			Name = "BallRing",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.32, size * 1.38, size * 1.38),
+			Color = edgeCol,
+			Material = Enum.Material.Neon,
+			Transparency = 0.25,
+			CFrame = ball.CFrame * CFrame.Angles(0, 0, math.rad(90)),
+		})
+
+	elseif t.id == "heavy" then
+		-- 【巨岩球】粗獷隕石刺球：6 個正交方位凸出的暗黑玄武岩稜角 + 滾動塵土
+		ball.Material = Enum.Material.Slate
+		local offsets = {
+			Vector3.new(size * 0.42, 0, 0),
+			Vector3.new(-size * 0.42, 0, 0),
+			Vector3.new(0, size * 0.42, 0),
+			Vector3.new(0, -size * 0.42, 0),
+			Vector3.new(0, 0, size * 0.42),
+			Vector3.new(0, 0, -size * 0.42),
+		}
+		for idx, off in ipairs(offsets) do
+			attachVisualPart(ball, {
+				Name = "RockSpike" .. idx,
+				Shape = Enum.PartType.Block,
+				Size = Vector3.new(size * 0.45, size * 0.45, size * 0.45),
+				Color = Color3.fromRGB(75, 68, 62),
+				Material = Enum.Material.Basalt,
+				CFrame = ball.CFrame * CFrame.new(off) * CFrame.Angles(math.rad(idx * 35), math.rad(idx * 45), math.rad(idx * 25)),
+			})
+		end
 		local pe = Instance.new("ParticleEmitter")
-		pe.Color = ColorSequence.new(t.edge, t.color)
-		pe.LightEmission = 1
-		pe.Size = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, t.size * 0.22),
-			NumberSequenceKeypoint.new(1, 0),
+		pe.Color = ColorSequence.new(Color3.fromRGB(110, 95, 80))
+		pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, size * 0.35), NumberSequenceKeypoint.new(1, size * 0.7)})
+		pe.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(1, 1)})
+		pe.Lifetime = NumberRange.new(0.4, 0.7)
+		pe.Rate = 25
+		pe.Speed = NumberRange.new(2, 6)
+		pe.SpreadAngle = Vector2.new(180, 180)
+		pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		pe.Parent = ball
+
+	elseif t.id == "quick" then
+		-- 【疾風球】風刃手裡劍：三枚 120° 旋轉的青色霓虹風刃 + 高速氣旋
+		for idx = 0, 2 do
+			local ang = math.rad(idx * 120)
+			local cRot = CFrame.Angles(0, ang, 0)
+			attachVisualPart(ball, {
+				Name = "WindBlade" .. idx,
+				Shape = Enum.PartType.Block,
+				Size = Vector3.new(size * 0.15, size * 0.3, size * 1.6),
+				Color = edgeCol,
+				Material = Enum.Material.Neon,
+				Transparency = 0.2,
+				CFrame = ball.CFrame * cRot * CFrame.new(0, 0, size * 0.65) * CFrame.Angles(0, math.rad(25), 0),
+			})
+		end
+		local pe = Instance.new("ParticleEmitter")
+		pe.Color = ColorSequence.new(Color3.fromRGB(180, 250, 255))
+		pe.LightEmission = 0.9
+		pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, size * 0.3), NumberSequenceKeypoint.new(1, 0)})
+		pe.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1)})
+		pe.Lifetime = NumberRange.new(0.2, 0.35)
+		pe.Rate = 50
+		pe.Speed = NumberRange.new(8, 16)
+		pe.SpreadAngle = Vector2.new(60, 60)
+		pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		pe.Parent = ball
+
+	elseif t.id == "split" then
+		-- 【分裂球】聚束母體炸彈：四顆正四面體環繞懸浮的能量子核
+		local dist = size * 0.68
+		local subOffsets = {
+			Vector3.new(dist, dist, dist).Unit * dist,
+			Vector3.new(-dist, -dist, dist).Unit * dist,
+			Vector3.new(-dist, dist, -dist).Unit * dist,
+			Vector3.new(dist, -dist, -dist).Unit * dist,
+		}
+		for idx, off in ipairs(subOffsets) do
+			attachVisualPart(ball, {
+				Name = "SubCore" .. idx,
+				Shape = Enum.PartType.Ball,
+				Size = Vector3.new(size * 0.35, size * 0.35, size * 0.35),
+				Color = edgeCol,
+				Material = Enum.Material.Neon,
+				Transparency = 0.15,
+				CFrame = ball.CFrame * CFrame.new(off),
+			})
+		end
+
+	elseif t.id == "ghost" then
+		-- 【幽靈球】幽冥魂火：外層 ForceField 靈體 + 內部紫光魂核 + 升騰魂火
+		ball.Material = Enum.Material.ForceField
+		ball.Transparency = 0.55
+		attachVisualPart(ball, {
+			Name = "SoulCore",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(size * 0.55, size * 0.55, size * 0.55),
+			Color = Color3.fromRGB(220, 160, 255),
+			Material = Enum.Material.Neon,
+			Transparency = 0.1,
+			CFrame = ball.CFrame,
 		})
-		pe.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.1),
-			NumberSequenceKeypoint.new(1, 1),
-		})
-		pe.Lifetime = NumberRange.new(0.25, 0.55)
-		pe.Rate = 45
+		local pe = Instance.new("ParticleEmitter")
+		pe.Color = ColorSequence.new(Color3.fromRGB(200, 140, 255), Color3.fromRGB(90, 30, 180))
+		pe.LightEmission = 0.85
+		pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, size * 0.45), NumberSequenceKeypoint.new(1, 0)})
+		pe.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1)})
+		pe.Lifetime = NumberRange.new(0.4, 0.7)
+		pe.Rate = 35
+		pe.Speed = NumberRange.new(2, 5)
+		pe.Acceleration = Vector3.new(0, 14, 0)
+		pe.SpreadAngle = Vector2.new(120, 120)
+		pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		pe.Parent = ball
+
+	elseif t.id == "fire" then
+		-- 【烈焰球】燃燒烈焰火球：真實 Roblox 火焰與黑煙
+		local fire = Instance.new("Fire")
+		fire.Size = math.clamp(size * 1.8, 6, 25)
+		fire.Heat = 20
+		fire.Color = Color3.fromRGB(255, 95, 20)
+		fire.SecondaryColor = Color3.fromRGB(255, 220, 60)
+		fire.Parent = ball
+
+		local smoke = Instance.new("Smoke")
+		smoke.Size = math.clamp(size * 0.6, 2, 8)
+		smoke.Color = Color3.fromRGB(45, 30, 25)
+		smoke.Opacity = 0.35
+		smoke.RiseVelocity = 6
+		smoke.Parent = ball
+
+	elseif t.id == "frost" then
+		-- 【極寒球】六角冰晶彗星：6 根銳利冰晶尖刺刺穿球體 + 寒霜粒子
+		ball.Material = Enum.Material.Ice
+		local dirs = {
+			Vector3.new(1, 0, 0), Vector3.new(-1, 0, 0),
+			Vector3.new(0, 1, 0), Vector3.new(0, -1, 0),
+			Vector3.new(0, 0, 1), Vector3.new(0, 0, -1),
+		}
+		for idx, dir in ipairs(dirs) do
+			attachVisualPart(ball, {
+				Name = "IceSpike" .. idx,
+				Shape = Enum.PartType.Block,
+				Size = Vector3.new(size * 0.25, size * 0.25, size * 0.75),
+				Color = Color3.fromRGB(215, 245, 255),
+				Material = Enum.Material.Ice,
+				Transparency = 0.2,
+				CFrame = CFrame.lookAt(ball.Position + dir * (size * 0.55), ball.Position + dir * (size * 1.3)),
+			})
+		end
+		local pe = Instance.new("ParticleEmitter")
+		pe.Color = ColorSequence.new(Color3.fromRGB(220, 245, 255))
+		pe.LightEmission = 0.7
+		pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, size * 0.2), NumberSequenceKeypoint.new(1, 0)})
+		pe.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1)})
+		pe.Lifetime = NumberRange.new(0.3, 0.6)
+		pe.Rate = 40
 		pe.Speed = NumberRange.new(1, 4)
 		pe.SpreadAngle = Vector2.new(180, 180)
-		pe.Acceleration = Vector3.new(0, -12, 0)
+		pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		pe.Parent = ball
+
+	elseif t.id == "thunder" then
+		-- 【雷電球】電漿雷暴：高亮描邊 + 狂暴電火花
+		local hl = Instance.new("Highlight")
+		hl.Adornee = ball
+		hl.FillColor = Color3.fromRGB(255, 245, 120)
+		hl.FillTransparency = 0.6
+		hl.OutlineColor = Color3.fromRGB(255, 255, 200)
+		hl.OutlineTransparency = 0.05
+		hl.Parent = ball
+
+		local pe = Instance.new("ParticleEmitter")
+		pe.Color = ColorSequence.new(Color3.fromRGB(255, 255, 120), Color3.fromRGB(255, 200, 40))
+		pe.LightEmission = 1
+		pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, size * 0.35), NumberSequenceKeypoint.new(1, 0)})
+		pe.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1)})
+		pe.Lifetime = NumberRange.new(0.12, 0.28)
+		pe.Rate = 70
+		pe.Speed = NumberRange.new(6, 14)
+		pe.SpreadAngle = Vector2.new(180, 180)
+		pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		pe.Parent = ball
+
+	elseif t.id == "gold" then
+		-- 【黃金球】神聖黃金天球：頭頂懸浮黃金天使光環 + 全身金光璀璨 + 金幣閃光
+		attachVisualPart(ball, {
+			Name = "GoldHalo",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.28, size * 1.25, size * 1.25),
+			Color = Color3.fromRGB(255, 225, 80),
+			Material = Enum.Material.Neon,
+			CFrame = ball.CFrame * CFrame.new(0, size * 0.65, 0) * CFrame.Angles(math.rad(15), 0, math.rad(90)),
+		})
+
+		local hl = Instance.new("Highlight")
+		hl.Adornee = ball
+		hl.FillColor = Color3.fromRGB(255, 215, 0)
+		hl.FillTransparency = 0.45
+		hl.OutlineColor = Color3.fromRGB(255, 255, 220)
+		hl.OutlineTransparency = 0.0
+		hl.Parent = ball
+
+		local pe = Instance.new("ParticleEmitter")
+		pe.Color = ColorSequence.new(Color3.fromRGB(255, 230, 90), Color3.fromRGB(255, 255, 220))
+		pe.LightEmission = 1
+		pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, size * 0.28), NumberSequenceKeypoint.new(1, 0)})
+		pe.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1)})
+		pe.Lifetime = NumberRange.new(0.35, 0.7)
+		pe.Rate = 50
+		pe.Speed = NumberRange.new(3, 8)
+		pe.SpreadAngle = Vector2.new(180, 180)
 		pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
 		pe.Parent = ball
 	end
 end
 
--- 建立一顆球（真正的物理與判定）
 local function createBall(t, pos: Vector3, vel: Vector3, opts: {track: boolean?, hp: number?, life: number?, mini: boolean?}?)
 	local size = t.size
 	if opts and opts.mini then size = t.size * 0.58 end
@@ -1646,6 +1882,17 @@ local function reflectBall(attacker: Player, ball: BasePart, look: Vector3, t)
 		if c:IsA("PointLight") then
 			c.Color = skin.color
 		elseif c:IsA("Trail") then
+			c.Color = ColorSequence.new(skin.color, Color3.fromRGB(255, 255, 255))
+		elseif c:IsA("BasePart") then
+			c.Color = skin.color
+			c.Material = Enum.Material.Neon
+		elseif c:IsA("Highlight") then
+			c.FillColor = skin.color
+			c.OutlineColor = Color3.fromRGB(255, 255, 255)
+		elseif c:IsA("Fire") then
+			c.Color = skin.color
+			c.SecondaryColor = Color3.fromRGB(255, 255, 255)
+		elseif c:IsA("ParticleEmitter") then
 			c.Color = ColorSequence.new(skin.color, Color3.fromRGB(255, 255, 255))
 		end
 	end
